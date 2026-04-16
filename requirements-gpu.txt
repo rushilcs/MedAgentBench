@@ -1,0 +1,19 @@
+# GPU training dependencies for open-weight GRPO
+# Install with: pip install -r requirements-gpu.txt
+
+trl>=1.0.0
+transformers>=5.0.0
+peft>=0.15.0
+bitsandbytes>=0.45.0
+accelerate>=1.0.0
+datasets>=3.0.0
+torch>=2.4.0
+
+# Optional: vLLM for faster generation during GRPO
+# Uncomment if you have enough VRAM (adds ~2-4GB overhead)
+# vllm>=0.8.0
+
+# Existing project dependencies
+requests
+pyyaml
+rich
