@@ -5,7 +5,8 @@ instantiates one ``MedAgentBenchEnv`` per rollout slot.  Public methods
 (excluding ``reset``) are automatically exposed as tools that the model
 can call via native tool-calling.
 
-``reset()`` is called before each generation batch.
+``reset()`` is called before each generation batch; TRL forwards dataset row
+fields as keyword arguments, so ``reset`` must accept ``**kwargs``.
 """
 
 from __future__ import annotations
@@ -47,8 +48,13 @@ class MedAgentBenchEnv:
         self._get_count = 0
         self._step_count = 0
 
-    def reset(self) -> None:
-        """Reset state between rollouts."""
+    def reset(self, **kwargs: Any) -> None:
+        """Reset state between rollouts.
+
+        TRL passes each dataset row as keyword args (``prompt``, ``task_id``,
+        ``instruction``, etc.); we accept and ignore them for compatibility.
+        """
+        _ = kwargs  # reserved for task-conditioned resets / reward shaping
         self._history = []
         self._finished = False
         self._finish_result = None
