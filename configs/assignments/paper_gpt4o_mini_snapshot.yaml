@@ -1,0 +1,18 @@
+# AgentBench assignment: gpt-4o-mini dated snapshot (same API id as fine-tuning base).
+# Produces: outputs/MedAgentBenchv1/gpt-4o-mini-2024-07-18/medagentbench-std/overall.json
+#
+# Prerequisite: `python -m src.start_task -a` then `python -m src.assigner --config <this file>`
+
+import: definition.yaml
+
+concurrency:
+  task:
+    medagentbench-std: 20
+  agent:
+    gpt-4o-mini-2024-07-18: 10
+
+assignments:
+  - agent: gpt-4o-mini-2024-07-18
+    task: medagentbench-std
+
+output: "outputs/MedAgentBenchv1"

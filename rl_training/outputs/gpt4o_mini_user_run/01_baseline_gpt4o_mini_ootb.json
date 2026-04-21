@@ -1,0 +1,22 @@
+{
+  "model_id": "gpt-4o-mini",
+  "total": 300,
+  "correct": 174,
+  "success_rate": 0.58,
+  "per_task_sr": {
+    "task1": 1.0,
+    "task2": 0.9666666666666667,
+    "task3": 1.0,
+    "task4": 0.6333333333333333,
+    "task5": 0.5666666666666667,
+    "task6": 0.6333333333333333,
+    "task7": 0.0,
+    "task8": 1.0,
+    "task9": 0.0,
+    "task10": 0.0
+  },
+  "query_sr": 0.6466666666666666,
+  "action_sr": 0.5133333333333333,
+  "invalid_action_rate": 0.0,
+  "avg_steps": 2.25
+}

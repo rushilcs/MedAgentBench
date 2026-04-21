@@ -1,0 +1,30 @@
+{
+  "v1_kept": 397,
+  "v1_kept_by_type": {
+    "task2": 232,
+    "task3": 50,
+    "task8": 115
+  },
+  "v1_drops": {
+    "drop_v1_task5": 246,
+    "drop_v1_task6": 118,
+    "drop_v1_task7": 49,
+    "drop_v1_task9": 85,
+    "drop_v1_task10": 135,
+    "prose_in_finish": 20
+  },
+  "v2_added": 1060,
+  "v2_added_by_type": {
+    "task1": 106,
+    "task2": 106,
+    "task3": 106,
+    "task4": 106,
+    "task5": 106,
+    "task6": 106,
+    "task7": 106,
+    "task8": 106,
+    "task9": 106,
+    "task10": 106
+  },
+  "combined_total": 1457
+}

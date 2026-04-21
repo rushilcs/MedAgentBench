@@ -1,0 +1,26 @@
+{
+  "model_id": "/qwen3_32b_sft_merged",
+  "base_model": "Qwen/Qwen3-32B-Instruct",
+  "lora_adapter": null,
+  "merged": false,
+  "total": 300,
+  "correct": 187,
+  "success_rate": 0.6233333333333333,
+  "per_task_sr": {
+    "task1": 0.43333333333333335,
+    "task2": 0.8333333333333334,
+    "task3": 1.0,
+    "task4": 0.4666666666666667,
+    "task5": 0.7333333333333333,
+    "task6": 0.5333333333333333,
+    "task7": 0.5666666666666667,
+    "task8": 1.0,
+    "task9": 0.26666666666666666,
+    "task10": 0.4
+  },
+  "query_sr": 0.5666666666666667,
+  "action_sr": 0.68,
+  "invalid_action_rate": 0.0,
+  "limit_reached_rate": 0.006666666666666667,
+  "avg_steps": 2.21
+}

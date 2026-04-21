@@ -1,0 +1,12 @@
+{
+  "expert_model": "gpt-4o",
+  "trajectories_per_task": 3,
+  "temperature": 0.7,
+  "tasks_total": 150,
+  "tasks_skipped_already_present": 0,
+  "new_rollouts_attempted": 450,
+  "new_rollouts_correct": 290,
+  "correct_total_in_store": 290,
+  "expert_trajectories_path": "rl_training/outputs/qwen_pipeline/phase_a/expert_trajectories.jsonl",
+  "qwen_sft_openai_path": "rl_training/outputs/qwen_pipeline/phase_a/qwen_sft_openai.jsonl"
+}

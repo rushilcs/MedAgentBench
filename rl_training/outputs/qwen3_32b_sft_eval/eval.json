@@ -1,0 +1,26 @@
+{
+  "model_id": "/qwen3_32b_sft_merged",
+  "base_model": "/qwen3_32b_sft_merged",
+  "lora_adapter": null,
+  "merged": false,
+  "total": 300,
+  "correct": 105,
+  "success_rate": 0.35,
+  "per_task_sr": {
+    "task1": 0.3,
+    "task2": 0.8333333333333334,
+    "task3": 0.0,
+    "task4": 0.9333333333333333,
+    "task5": 0.23333333333333334,
+    "task6": 0.3,
+    "task7": 0.5333333333333333,
+    "task8": 0.0,
+    "task9": 0.03333333333333333,
+    "task10": 0.3333333333333333
+  },
+  "query_sr": 0.58,
+  "action_sr": 0.12,
+  "invalid_action_rate": 0.04666666666666667,
+  "limit_reached_rate": 0.0,
+  "avg_steps": 2.2133333333333334
+}

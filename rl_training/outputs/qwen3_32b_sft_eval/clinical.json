@@ -1,0 +1,81 @@
+{
+  "total": 300,
+  "temporal_inconsistency_rate": 0.5222222222222223,
+  "over_deferral_rate": 0.17777777777777778,
+  "under_deferral_rate": 0.6222222222222222,
+  "evidence_omission_rate": 0.0,
+  "avg_answer_tokens": 31.39666666666667,
+  "p95_answer_tokens": 22.0,
+  "per_task": {
+    "task1": {
+      "total": 30,
+      "temporal_inconsistency_rate": 0.0,
+      "over_deferral_rate": 0.0,
+      "under_deferral_rate": 0.0,
+      "evidence_omission_rate": 0.0
+    },
+    "task2": {
+      "total": 30,
+      "temporal_inconsistency_rate": 0.0,
+      "over_deferral_rate": 0.0,
+      "under_deferral_rate": 0.0,
+      "evidence_omission_rate": 0.0
+    },
+    "task3": {
+      "total": 30,
+      "temporal_inconsistency_rate": 0.0,
+      "over_deferral_rate": 0.0,
+      "under_deferral_rate": 0.0,
+      "evidence_omission_rate": 0.0
+    },
+    "task4": {
+      "total": 30,
+      "temporal_inconsistency_rate": 0.7333333333333333,
+      "over_deferral_rate": 0.0,
+      "under_deferral_rate": 0.0,
+      "evidence_omission_rate": 0.0
+    },
+    "task5": {
+      "total": 30,
+      "temporal_inconsistency_rate": 0.4,
+      "over_deferral_rate": 0.3333333333333333,
+      "under_deferral_rate": 0.43333333333333335,
+      "evidence_omission_rate": 0.0
+    },
+    "task6": {
+      "total": 30,
+      "temporal_inconsistency_rate": 0.7,
+      "over_deferral_rate": 0.0,
+      "under_deferral_rate": 0.0,
+      "evidence_omission_rate": 0.0
+    },
+    "task7": {
+      "total": 30,
+      "temporal_inconsistency_rate": 0.0,
+      "over_deferral_rate": 0.0,
+      "under_deferral_rate": 0.0,
+      "evidence_omission_rate": 0.0
+    },
+    "task8": {
+      "total": 30,
+      "temporal_inconsistency_rate": 0.0,
+      "over_deferral_rate": 0.0,
+      "under_deferral_rate": 0.0,
+      "evidence_omission_rate": 0.0
+    },
+    "task9": {
+      "total": 30,
+      "temporal_inconsistency_rate": 1.0,
+      "over_deferral_rate": 0.1,
+      "under_deferral_rate": 0.8666666666666667,
+      "evidence_omission_rate": 0.0
+    },
+    "task10": {
+      "total": 30,
+      "temporal_inconsistency_rate": 0.3,
+      "over_deferral_rate": 0.1,
+      "under_deferral_rate": 0.5666666666666667,
+      "evidence_omission_rate": 0.0
+    }
+  }
+}

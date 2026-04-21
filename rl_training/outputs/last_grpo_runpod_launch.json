@@ -1,0 +1,7 @@
+{
+  "pod_id": "ot5z2pttykq086",
+  "console_url": "https://www.runpod.io/console/pods/ot5z2pttykq086",
+  "ssh_command": "ssh -i .agent_run/ssh/id_ed25519 -p 13340 root@216.243.220.217",
+  "config": "rl_training/configs/qwen3_32b_grpo_post_sft_v2.yaml",
+  "note": "If plain SSH fails from your laptop, open the Web Terminal from the console URL and run the bootstrap block."
+}

@@ -11,12 +11,45 @@
 #   bash rl_training/scripts/grpo_pod_one_shot_ssh.sh
 #
 # Usage (exposed TCP):
-#   export SSH_KEY="$HOME/.ssh/id_ed25519"
 #   bash rl_training/scripts/grpo_pod_one_shot_ssh.sh --direct root@64.247.201.32 12781
+#
+# SSH key: set SSH_KEY to a private key file. If unset or missing, the script tries
+#   $HOME/.ssh/id_ed25519 then repo .agent_run/ssh/id_ed25519 (RunPod deploy key).
 #
 set -euo pipefail
 
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_REPO_ROOT="$(cd "$_SCRIPT_DIR/../.." && pwd)"
+_RUNPOD_KEY="$_REPO_ROOT/.agent_run/ssh/id_ed25519"
+
+_resolve_ssh_key() {
+  if [[ -n "${SSH_KEY:-}" && -f "$SSH_KEY" ]]; then
+    echo "$SSH_KEY"
+    return 0
+  fi
+  if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
+    echo "$HOME/.ssh/id_ed25519"
+    return 0
+  fi
+  if [[ -f "$_RUNPOD_KEY" ]]; then
+    echo "$_RUNPOD_KEY"
+    return 0
+  fi
+  return 1
+}
+
+if ! SSH_KEY="$(_resolve_ssh_key)"; then
+  echo "ERROR: no SSH private key found. Tried:" >&2
+  echo "  SSH_KEY=${SSH_KEY:-<unset>}" >&2
+  echo "  $HOME/.ssh/id_ed25519" >&2
+  echo "  $_RUNPOD_KEY" >&2
+  echo "Generate one: ssh-keygen -t ed25519 -C you@email -f ~/.ssh/id_ed25519 -N \"\"" >&2
+  echo "Or: export SSH_KEY=/path/to/private_key" >&2
+  exit 2
+fi
+
+echo "==> Using identity: $SSH_KEY" >&2
+
 POD_SSH_TARGET="${POD_SSH_TARGET:-37bwi04ubak9wm-64411faa@ssh.runpod.io}"
 
 SSH_BASE=(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=45 -o ServerAliveCountMax=30)
@@ -27,11 +60,6 @@ if [[ "${1:-}" == "--direct" ]]; then
   SSH_CMD=("${SSH_BASE[@]}" -p "$port" "$host")
 else
   SSH_CMD=("${SSH_BASE[@]}" "$POD_SSH_TARGET")
-fi
-
-if [[ ! -f "$SSH_KEY" ]]; then
-  echo "ERROR: private key not found: $SSH_KEY" >&2
-  exit 2
 fi
 
 echo "==> Connecting: ${SSH_CMD[*]}" >&2

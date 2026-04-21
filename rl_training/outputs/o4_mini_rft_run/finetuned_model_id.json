@@ -1,0 +1,14 @@
+{
+  "fine_tuned_model": null,
+  "job_id": "ftjob-O9LaqCIZuJF6HI9pECObu08q",
+  "status": "failed",
+  "base_model": "o4-mini-2025-04-16",
+  "suffix": "",
+  "training_file": "file-Dzt98qKdNpfMMZbG5it8LP",
+  "validation_file": "file-HMtyHCZRrSfQDgLGvvAeb6",
+  "grader_name": "medagent_judge",
+  "last_metrics": {},
+  "n_train": 160,
+  "n_val": 40,
+  "config_path": "rl_training/configs/o4_mini_rft.yaml"
+}

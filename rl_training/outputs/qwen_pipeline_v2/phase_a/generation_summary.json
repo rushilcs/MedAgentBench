@@ -1,0 +1,27 @@
+{
+  "expert_model": "gpt-4o",
+  "model_trajectories_per_task": 2,
+  "temperature": 0.7,
+  "count_per_type": 50,
+  "tasks_total": 500,
+  "existing_trajectories_at_start": 0,
+  "programmatic_new_correct": 500,
+  "model_attempted": 1000,
+  "model_new_correct": 707,
+  "store_total_correct": 1207,
+  "deduped_total": 1053,
+  "per_task_type_after_dedup": {
+    "task1": 127,
+    "task2": 105,
+    "task3": 50,
+    "task4": 129,
+    "task5": 136,
+    "task6": 118,
+    "task7": 50,
+    "task8": 117,
+    "task9": 86,
+    "task10": 135
+  },
+  "expert_trajectories_path": "rl_training/outputs/qwen_pipeline_v2/phase_a/expert_trajectories.jsonl",
+  "qwen_sft_openai_path": "rl_training/outputs/qwen_pipeline_v2/phase_a/qwen_sft_openai.jsonl"
+}

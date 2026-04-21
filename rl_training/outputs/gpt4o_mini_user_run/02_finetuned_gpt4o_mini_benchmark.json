@@ -1,0 +1,22 @@
+{
+  "model_id": "ft:gpt-4o-mini-2024-07-18:personal:medagent-sft-mini:DVQWrpzL",
+  "total": 300,
+  "correct": 217,
+  "success_rate": 0.7233333333333334,
+  "per_task_sr": {
+    "task1": 1.0,
+    "task2": 1.0,
+    "task3": 1.0,
+    "task4": 0.7,
+    "task5": 0.7666666666666667,
+    "task6": 0.23333333333333334,
+    "task7": 0.36666666666666664,
+    "task8": 1.0,
+    "task9": 0.5,
+    "task10": 0.6666666666666666
+  },
+  "query_sr": 0.66,
+  "action_sr": 0.7866666666666666,
+  "invalid_action_rate": 0.023333333333333334,
+  "avg_steps": 2.0633333333333335
+}

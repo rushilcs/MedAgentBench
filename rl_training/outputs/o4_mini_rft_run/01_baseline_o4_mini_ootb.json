@@ -1,0 +1,25 @@
+{
+  "model_id": "o4-mini-2025-04-16",
+  "total": 300,
+  "correct": 178,
+  "success_rate": 0.5933333333333334,
+  "per_task_sr": {
+    "task1": 0.9666666666666667,
+    "task2": 0.9333333333333333,
+    "task3": 1.0,
+    "task4": 0.8666666666666667,
+    "task5": 0.5333333333333333,
+    "task6": 0.8,
+    "task7": 0.0,
+    "task8": 0.8,
+    "task9": 0.0,
+    "task10": 0.03333333333333333
+  },
+  "query_sr": 0.7133333333333334,
+  "action_sr": 0.47333333333333333,
+  "invalid_action_rate": 0.0,
+  "limit_reached_rate": 0.0,
+  "avg_steps": 2.1133333333333333,
+  "reasoning_effort": "medium",
+  "stage": "baseline"
+}

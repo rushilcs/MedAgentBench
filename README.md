@@ -86,6 +86,59 @@ python -m src.assigner
 
 The results can be found at `outputs/MedAgentBenchv1/gpt-4o-mini/medagentbench-std/overall.json`.
 
+The aggregate benchmark metric is under `custom` → `"success rate"` (fraction of tasks graded correct on `data/medagentbench/test_data_v2.json`, 300 cases). Re-running locally can differ slightly from the NEJM paper table due to API model snapshots and variance.
+
+### Optional: dated `gpt-4o-mini` snapshot (aligns with OpenAI fine-tuning)
+
+The default agent name `gpt-4o-mini` tracks OpenAI’s current mini model. To evaluate a **fixed snapshot** that matches the fine-tunable base (`gpt-4o-mini-2024-07-18`), use:
+
+```bash
+python -m src.assigner --config configs/assignments/paper_gpt4o_mini_snapshot.yaml
+```
+
+Results path: `outputs/MedAgentBenchv1/gpt-4o-mini-2024-07-18/medagentbench-std/overall.json`.
+
+### OpenAI fine-tuning (gpt-4o-mini) and comparing to baseline
+
+This repo includes an RL-training pipeline that fine-tunes **`gpt-4o-mini-2024-07-18`** on MedAgentBench-style trajectories, then evaluates on the **same 300-task file** using `rl_training` (in-process env, same graders as the server).
+
+1. **Stop any in-flight OpenAI fine-tuning jobs** (optional; only affects jobs still `running` / `validating_files`):
+
+   ```bash
+   export OPENAI_API_KEY=...   # or rely on configs/agents/openai-chat.yaml for other commands
+   python rl_training/scripts/cancel_openai_finetune_jobs.py
+   ```
+
+2. **Paper-style baseline** (full AgentBench stack): follow Steps 1–5 above with Docker FHIR on port 8080 and `python -m src.assigner`. Record `custom["success rate"]` from `overall.json`.
+
+3. **Run the mini fine-tuning pipeline** (FHIR must be reachable at `http://localhost:8080/fhir/`):
+
+   ```bash
+   python rl_training/scripts/run_pipeline.py \
+     --config rl_training/configs/gpt4o_mini_openai.yaml \
+     --output-dir rl_training/outputs/gpt4o_mini_pipeline
+   ```
+
+   Use `--skip-phase-b` to run **Phase A (SFT) only** and skip iterative GRPO (saves a lot of API time).
+
+4. **Compare numbers** in `rl_training/outputs/gpt4o_mini_pipeline/`:
+
+   - `baseline_eval.json` — base `gpt-4o-mini-2024-07-18` via `rl_training` evaluator  
+   - `phase_a_eval.json` — after SFT (and `summary.json` after Phase B if not skipped)
+
+5. **Optional: evaluate the fine-tuned model again** without retraining:
+
+   ```bash
+   python rl_training/scripts/evaluate.py \
+     --config rl_training/configs/gpt4o_mini_openai.yaml \
+     --model ft:gpt-4o-mini-2024-07-18:...:YOUR_SUFFIX \
+     --output rl_training/outputs/gpt4o_mini_pipeline/manual_eval_ft.json
+   ```
+
+   Use the `ft:...` model id printed when the OpenAI fine-tuning job completes.
+
+**Note:** AgentBench (`src.assigner`) and `rl_training` use the **same task JSON and refsol grading**, but different harness code; expect small gaps versus a strict “paper reproduction.” For the closest single-number match to Step 5, use the AgentBench `overall.json`; for **before/after fine-tune** on identical harness, use `baseline_eval.json` vs `phase_a_eval.json` from the pipeline.
+
 # Citation
 
 If you find our work useful in your research please consider citing:

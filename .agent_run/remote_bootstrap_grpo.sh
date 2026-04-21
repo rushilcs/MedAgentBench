@@ -98,6 +98,7 @@ export STAGE=grpo
 export SKIP_FLASH_ATTN=1
 export SKIP_TRANSFORMERS_MAIN="${SKIP_TRANSFORMERS_MAIN:-}"
 export CONFIG="${CONFIG:-rl_training/configs/qwen3_32b_grpo_post_sft_v2.yaml}"
+# Default must exist after ``git clone`` (tracked in repo). Override with pipeline JSON if present on pod/B2.
 export TRAINING_TASKS="${TRAINING_TASKS:-rl_training/data/training_tasks_v2.json}"
 export OUTPUT_DIR="${OUTPUT_DIR:-rl_training/outputs/qwen3_32b_grpo_v2}"
 export B2_PREFIX="${B2_PREFIX:-qwen3_32b_run3/grpo_v2_ckpts}"

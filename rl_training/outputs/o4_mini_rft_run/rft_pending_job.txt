@@ -1,0 +1,4 @@
+ftjob-ArXQ3BfQ3xcIkQAgRkCtjCYB
+dataset: train.jsonl.no_t8 / val.jsonl.no_t8 (tasks 1,2,8 excluded)
+submitted: 2026-04-19 (local)
+log: rl_training/outputs/o4_mini_rft_run/logs/rft_submit_no_t8_20260419_125916.log

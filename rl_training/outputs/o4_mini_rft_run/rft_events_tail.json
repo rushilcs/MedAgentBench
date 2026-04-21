@@ -1,0 +1,23 @@
+[
+  {
+    "id": "ftevent-3bdqlcC4QL39PR37godAt2zf",
+    "type": "message",
+    "message": "Created fine-tuning job: ftjob-O9LaqCIZuJF6HI9pECObu08q",
+    "data": {}
+  },
+  {
+    "id": "ftevent-yfBP0UaBa9lpljyJhLKrulsT",
+    "type": "message",
+    "message": "Validating training file: file-Dzt98qKdNpfMMZbG5it8LP and validation file: file-HMtyHCZRrSfQDgLGvvAeb6",
+    "data": {}
+  },
+  {
+    "id": "ftevent-kP1xr4v7sv4musf0wZnqbMGC",
+    "type": "message",
+    "message": "The job failed due to an unsafe training file. This training file was blocked due to policy violations. Please review your data and ensure that prompts do not contain requests that violate OpenAI's usage policies.",
+    "data": {
+      "error_code": "unsafe_file",
+      "error_param": "training_file"
+    }
+  }
+]

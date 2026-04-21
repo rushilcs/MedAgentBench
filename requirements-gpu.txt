@@ -1,19 +1,43 @@
-# GPU training dependencies for open-weight GRPO
+# GPU training dependencies for open-weight GRPO on Qwen/Qwen3-32B-Instruct.
 # Install with: pip install -r requirements-gpu.txt
+#
+# Target stack:
+#   - TRL GRPOTrainer (server-mode vLLM rollouts)
+#   - QLoRA NF4 via bitsandbytes + peft
+#   - Qwen3 support via transformers >=4.51
+#   - Optional flash-attn for 2-3x throughput on H100 (install separately,
+#     the wheel build needs matching CUDA/torch, see RL_STACK_RUNBOOK.md).
 
-trl>=1.0.0
-transformers>=5.0.0
-peft>=0.15.0
-bitsandbytes>=0.45.0
+# Core RL + model
+trl>=0.19.0,<2.0
+transformers>=4.51.0
+peft>=0.13.0
+bitsandbytes>=0.43.0
 accelerate>=1.0.0
 datasets>=3.0.0
-torch>=2.4.0
+# TRL 1.2+ imports torch.distributed.fsdp.FSDPModule (PyTorch 2.6+). The RunPod
+# PyTorch 2.4 image alone is insufficient; align torchvision/torchaudio to the
+# same CUDA wheel index when upgrading torch.
+torch>=2.6.0
 
-# Optional: vLLM for faster generation during GRPO
-# Uncomment if you have enough VRAM (adds ~2-4GB overhead)
-# vllm>=0.8.0
+# vLLM (server mode for GRPO rollouts on a dedicated GPU)
+vllm>=0.8.0
+
+# Cloud checkpoint sync (Backblaze B2)
+b2sdk>=2.0.0
+
+# Hugging Face Hub authentication + model fallback resolution
+huggingface_hub>=0.26.0
+
+# Progress visibility (shared with base project)
+rich>=13.0.0
 
 # Existing project dependencies
 requests
 pyyaml
-rich
+
+# Optional: flash-attn for faster attention on H100.
+# Install separately with a matching prebuilt wheel, e.g.:
+#   pip install flash-attn --no-build-isolation
+# This is NOT pinned here because the correct wheel depends on the
+# CUDA + torch + python combo on your pod.

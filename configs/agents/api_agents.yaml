@@ -4,6 +4,16 @@ gpt-4o-mini:
         name: "gpt-4o-mini"
         body:
             model: "gpt-4o-mini"
+
+# Dated snapshot (matches OpenAI fine-tuning base gpt-4o-mini-2024-07-18). Use with
+# `python -m src.assigner --config configs/assignments/paper_gpt4o_mini_snapshot.yaml`
+# for a reproducible AgentBench run aligned with rl_training fine-tuning config.
+gpt-4o-mini-2024-07-18:
+    import: "./openai-chat.yaml"
+    parameters:
+        name: "gpt-4o-mini-2024-07-18"
+        body:
+            model: "gpt-4o-mini-2024-07-18"
             
 gpt-4o:
     import: "./openai-chat.yaml"

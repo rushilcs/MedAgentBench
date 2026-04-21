@@ -1,0 +1,7 @@
+{
+  "fine_tuned_model": "ft:gpt-4o-mini-2024-07-18:personal:medagent-sft-mini:DVQWrpzL",
+  "base_model": "gpt-4o-mini-2024-07-18",
+  "n_epochs": 3,
+  "n_trajectories": 1361,
+  "source_jsonl": "rl_training/outputs/gpt4o_pipeline/phase_a/expert_trajectories.jsonl"
+}
