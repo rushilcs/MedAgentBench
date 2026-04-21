@@ -70,7 +70,7 @@ rewards:
   decision_density_weight: 0.0
 
 data:
-  training_tasks_path: "rl_training/outputs/qwen_pipeline_v3/phase_a/training_tasks_v2.json"
+  training_tasks_path: "rl_training/data/training_tasks_v2.json"
   benchmark_tasks_path: "data/medagentbench/test_data_v2.json"
   tasks_per_type: 30
   include_stress_variants: false
