@@ -1,0 +1,85 @@
+# QLoRA SFT config for Qwen/Qwen3-32B-Instruct on MedAgentBench expert
+# trajectories. This warm-starts the policy before GRPO sees it and is
+# the Qwen analog of the gpt-4o-mini SFT job (medagent-sft-mini).
+#
+# Consumed by rl_training/scripts/sft_qwen3_32b.py.
+#
+# Single 1xH100 PCIe is enough: with QLoRA + gradient checkpointing the
+# peak VRAM is ~45-55 GB at max_seq_length=4096, bs=1, grad_accum=8.
+# At ~1200-1400 correct trajectories and 3 epochs this runs in ~4-5 h.
+
+model:
+  # Same primary/fallback as the GRPO configs; resolver is shared.
+  name_or_path: "Qwen/Qwen3-32B-Instruct"
+  fallback: "Qwen/Qwen3-32B"
+  torch_dtype: "bfloat16"
+  attn_implementation: "sdpa"  # flash-attn compile too slow on RunPod; sdpa is ~10-15% slower but reliable
+
+# QLoRA configuration. r/alpha bumped vs run1 (r=16) so the adapter has
+# the capacity to learn the multi-step FHIR action format. Target modules
+# kept as "all-linear" to ensure attention + MLP both adapt.
+qlora:
+  enabled: true
+  r: 64
+  alpha: 128
+  dropout: 0.05
+  target_modules: "all-linear"
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "bfloat16"
+
+# SFT hyperparameters
+sft:
+  num_train_epochs: 3
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 8
+  learning_rate: 1.0e-5
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  # MedAgentBench episodes with full function-list prompts run ~3500-3990
+  # tokens (p99 in our run2 corpus = 3987). 5120 leaves headroom for the
+  # Qwen3 chat template (incl. the <think></think> placeholder when
+  # enable_thinking is forced False) without any truncation.
+  max_seq_length: 5120
+  # Force-disable Qwen3 "thinking" mode in the chat template. Without this
+  # the tokenizer adds <think>...</think> blocks during training -> the
+  # model learns to emit thinking tokens which corrupt our action parser
+  # at inference. Consumed by sft_qwen3_32b.py.
+  disable_qwen_thinking: true
+  # Preserve episode boundaries (no cross-example concatenation). We want
+  # loss to match what the model sees in eval, one episode at a time.
+  packing: false
+  # Mask user/system turns; train only on assistant tokens. Matches OpenAI's
+  # SFT behaviour and stops the model from memorising the function catalog.
+  completion_only_loss: true
+  bf16: true
+  gradient_checkpointing: true
+  save_steps: 100
+  save_strategy: "steps"
+  logging_steps: 10
+  seed: 42
+
+data:
+  # Produced by build_qwen_sft_corpus.py (run2). Programmatic + gpt-4o
+  # rollouts across all 10 task types, dedup'd and length-filtered to
+  # <=4096 raw tokens (template adds ~30 more, fits in max_seq_length=5120).
+  sft_jsonl: "rl_training/outputs/qwen_pipeline_v2/phase_a/qwen_sft_openai.jsonl"
+  training_tasks_path: "rl_training/outputs/qwen_pipeline_v2/phase_a/training_tasks.json"
+
+# Output + checkpoint sync (same interface as the GRPO configs)
+output:
+  dir: "rl_training/outputs/qwen3_32b_sft"
+  checkpoint_keep_last: 3
+  cloud_sync:
+    # Enable when B2_APPLICATION_KEY_ID / B2_APPLICATION_KEY are set on the pod.
+    enabled: true
+    backend: "b2"
+    bucket: "medagentbench-checkpoint"
+    prefix: "qwen3_32b_run2/qwen3_32b_sft_ckpts"
+
+resilience:
+  heartbeat_path: "/tmp/trainer_heartbeat"
+  heartbeat_stale_seconds: 900
+  max_runtime_hours: 8
+  ntfy_topic: ""

@@ -1,0 +1,110 @@
+# GRPO config for Qwen3-32B on MedAgentBench, starting from the SFT-merged
+# base weights rather than the raw Hub checkpoint.
+#
+# Differences from qwen3_32b_grpo_clinical.yaml:
+#   - model.name_or_path points at the locally-merged SFT model dir
+#     (produced by merge_lora.py after sft_qwen3_32b.py).
+#   - output.dir is distinct so SFT+GRPO, baseline, and clinical runs can
+#     all coexist without clobbering each other.
+#   - cloud_sync prefix is distinct for the same reason.
+#   - All three clinical rewards are ON (same as the clinical config) so
+#     we can attribute improvements to GRPO on top of SFT rather than to
+#     a different reward shape.
+#
+# Consumed by rl_training/scripts/train_grpo_32b.py. The GRPO launcher
+# accepts local paths for model.name_or_path and skips the Hub model_info
+# check in that case.
+
+model:
+  # Must match the --output-dir you passed to merge_lora.py.
+  name_or_path: "/workspace/qwen3_32b_sft_merged"
+  # If the merge dir is missing we don't have a sane fallback (the point
+  # of this config is to run SFT+GRPO), but keep the Hub base as a
+  # last-ditch fallback so dry-runs still work off-pod.
+  fallback: "Qwen/Qwen3-32B-Instruct"
+  torch_dtype: "bfloat16"
+  attn_implementation: "sdpa"  # flash-attn compile skipped on Pod B; sdpa is reliable
+
+qlora:
+  enabled: true
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: "all-linear"
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "bfloat16"
+
+grpo:
+  max_steps: 200
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  num_generations: 4
+  max_prompt_length: 2048
+  max_completion_length: 2048
+  learning_rate: 5.0e-6
+  beta: 0.04
+  epsilon: 0.2
+  temperature: 0.9
+  top_p: 0.95
+  gradient_checkpointing: true
+  bf16: true
+  save_steps: 10
+  logging_steps: 1
+  log_completions: true
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  lr_scheduler_type: "cosine"
+  seed: 42
+
+vllm:
+  use_vllm: true
+  mode: "server"
+  host: "127.0.0.1"
+  port: 8000
+  gpu_memory_utilization: 0.9
+  max_num_seqs: 8
+  max_model_len: 4096
+  tensor_parallel_size: 1
+
+env:
+  fhir_api_base: "http://localhost:8080/fhir/"
+  func_file: "data/medagentbench/funcs_v1.json"
+  max_rounds: 8
+  use_fhir_snapshot: true
+  snapshot_path: "rl_training/outputs/fhir_snapshot.jsonl"
+  snapshot_fallthrough: true
+
+# All three clinical novelty rewards on, same weights as the clinical config.
+rewards:
+  correctness_weight: 1.0
+  efficiency_weight: 0.3
+  tool_usage_weight: 0.2
+  temporal_grounding_enabled: true
+  temporal_grounding_weight: 0.8
+  risk_calibrated_deferral_enabled: true
+  risk_calibrated_deferral_weight: 0.5
+  decision_density_enabled: true
+  decision_density_weight: 0.2
+
+data:
+  training_tasks_path: "rl_training/outputs/training_tasks.json"
+  benchmark_tasks_path: "data/medagentbench/test_data_v2.json"
+  tasks_per_type: 30
+  include_stress_variants: false
+  seed: 42
+
+output:
+  dir: "rl_training/outputs/qwen3_32b_grpo_post_sft"
+  checkpoint_keep_last: 3
+  cloud_sync:
+    enabled: true
+    backend: "b2"
+    bucket: "medagentbench-checkpoint"
+    prefix: "qwen3_32b_run1/qwen3_32b_grpo_ckpts"
+
+resilience:
+  heartbeat_path: "/tmp/trainer_heartbeat"
+  heartbeat_stale_seconds: 900
+  max_runtime_hours: 20
+  ntfy_topic: ""

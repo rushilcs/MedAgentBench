@@ -1,0 +1,92 @@
+# Short GRPO run: small max_steps + frequent saves so first LoRA checkpoint
+# reaches B2 quickly (proof / handoff). Same as qwen3_32b_grpo_post_sft_v2.yaml
+# except grpo.max_steps and grpo.save_steps.
+
+model:
+  name_or_path: "/workspace/qwen3_32b_sft_v2_merged"
+  fallback: "Qwen/Qwen3-32B"
+  torch_dtype: "bfloat16"
+  attn_implementation: "sdpa"
+
+qlora:
+  enabled: true
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: "all-linear"
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "bfloat16"
+
+grpo:
+  max_steps: 12
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  num_generations: 4
+  max_prompt_length: 4096
+  max_completion_length: 2048
+  learning_rate: 5.0e-6
+  beta: 0.04
+  epsilon: 0.2
+  temperature: 0.9
+  top_p: 0.95
+  gradient_checkpointing: true
+  bf16: true
+  save_steps: 2
+  logging_steps: 1
+  log_completions: true
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  lr_scheduler_type: "cosine"
+  seed: 42
+
+vllm:
+  use_vllm: true
+  mode: "server"
+  host: "127.0.0.1"
+  port: 8000
+  gpu_memory_utilization: 0.9
+  max_num_seqs: 4
+  max_model_len: 8192
+  tensor_parallel_size: 1
+
+env:
+  fhir_api_base: "http://localhost:8080/fhir/"
+  func_file: "data/medagentbench/funcs_v1.json"
+  max_rounds: 8
+  use_fhir_snapshot: true
+  snapshot_path: "rl_training/outputs/fhir_snapshot.jsonl"
+  snapshot_fallthrough: true
+
+rewards:
+  correctness_weight: 1.0
+  efficiency_weight: 0.3
+  tool_usage_weight: 0.2
+  temporal_grounding_enabled: false
+  temporal_grounding_weight: 0.0
+  risk_calibrated_deferral_enabled: false
+  risk_calibrated_deferral_weight: 0.0
+  decision_density_enabled: false
+  decision_density_weight: 0.0
+
+data:
+  training_tasks_path: "rl_training/outputs/qwen_pipeline_v3/phase_a/training_tasks_v2.json"
+  benchmark_tasks_path: "data/medagentbench/test_data_v2.json"
+  tasks_per_type: 30
+  include_stress_variants: false
+  seed: 42
+
+output:
+  dir: "rl_training/outputs/qwen3_32b_grpo_v2"
+  checkpoint_keep_last: 3
+  cloud_sync:
+    enabled: true
+    backend: "b2"
+    bucket: "medagentbench-checkpoint"
+    prefix: "qwen3_32b_run3/grpo_v2_ckpts"
+
+resilience:
+  heartbeat_path: "/tmp/trainer_heartbeat"
+  heartbeat_stale_seconds: 1200
+  max_runtime_hours: 4
+  ntfy_topic: ""

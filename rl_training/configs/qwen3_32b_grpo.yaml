@@ -1,0 +1,112 @@
+# Baseline GRPO config for Qwen/Qwen3-32B-Instruct on MedAgentBench.
+#
+# This is the reference config for option B (2xH100 on-demand):
+#   - Learner on cuda:0 (QLoRA NF4)
+#   - vLLM server on cuda:1 (BF16)
+#
+# Consumed by rl_training/scripts/train_grpo_32b.py. Values here can be
+# overridden by CLI flags on the trainer script.
+#
+# For the clinical (novelty) variant, see qwen3_32b_grpo_clinical.yaml.
+
+model:
+  # Primary HF repo; auto-resolved to Qwen/Qwen3-32B if the -Instruct tag 404s
+  # via huggingface_hub.model_info() at trainer startup.
+  name_or_path: "Qwen/Qwen3-32B-Instruct"
+  fallback: "Qwen/Qwen3-32B"
+  torch_dtype: "bfloat16"
+  attn_implementation: "flash_attention_2"  # falls back to sdpa if flash-attn not installed
+
+# QLoRA configuration (learner GPU)
+qlora:
+  enabled: true
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: "all-linear"
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "bfloat16"
+
+# GRPO hyperparameters
+grpo:
+  max_steps: 200
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  num_generations: 4
+  max_prompt_length: 2048
+  max_completion_length: 2048
+  learning_rate: 5.0e-6
+  beta: 0.04               # KL coefficient to reference model
+  epsilon: 0.2             # clipped-ratio epsilon for GRPO
+  temperature: 0.9         # rollout sampling temperature
+  top_p: 0.95
+  gradient_checkpointing: true
+  bf16: true
+  save_steps: 10           # frequent saves for resilience
+  logging_steps: 1
+  log_completions: true
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  lr_scheduler_type: "cosine"
+  seed: 42
+
+# vLLM rollout server (reached over HTTP; launched by launch_vllm_server.sh)
+vllm:
+  use_vllm: true
+  mode: "server"
+  host: "127.0.0.1"
+  port: 8000
+  # Server-side settings (consumed by launch_vllm_server.sh via env vars):
+  gpu_memory_utilization: 0.9
+  max_num_seqs: 8
+  max_model_len: 4096
+  tensor_parallel_size: 1
+
+# Environment
+env:
+  fhir_api_base: "http://localhost:8080/fhir/"
+  func_file: "data/medagentbench/funcs_v1.json"
+  max_rounds: 8
+  use_fhir_snapshot: true
+  snapshot_path: "rl_training/outputs/fhir_snapshot.jsonl"
+  # On cache miss in replay mode, fall through to live FHIR so training
+  # doesn't crash on a single unrecorded URL:
+  snapshot_fallthrough: true
+
+# Rewards (baseline: 3 existing rewards only)
+rewards:
+  correctness_weight: 1.0
+  efficiency_weight: 0.3
+  tool_usage_weight: 0.2
+  # Clinical rewards (DISABLED in baseline config):
+  temporal_grounding_enabled: false
+  temporal_grounding_weight: 0.0
+  risk_calibrated_deferral_enabled: false
+  risk_calibrated_deferral_weight: 0.0
+  decision_density_enabled: false
+  decision_density_weight: 0.0
+
+# Training data
+data:
+  training_tasks_path: "rl_training/outputs/training_tasks.json"
+  benchmark_tasks_path: "data/medagentbench/test_data_v2.json"
+  tasks_per_type: 30        # 10 task types × 30 = 300 training tasks
+  seed: 42
+
+# Output + checkpoint sync
+output:
+  dir: "rl_training/outputs/qwen3_32b_grpo"
+  checkpoint_keep_last: 3
+  cloud_sync:
+    enabled: false          # set true when B2_APPLICATION_KEY_ID env var is set
+    backend: "b2"
+    bucket: "medagentbench-checkpoints"
+    prefix: "qwen3_32b_grpo/baseline"
+
+# Resilience / watchdog (read by launch_runpod.sh + watchdog.sh)
+resilience:
+  heartbeat_path: "/tmp/trainer_heartbeat"
+  heartbeat_stale_seconds: 900     # 15 min
+  max_runtime_hours: 20
+  ntfy_topic: ""                   # empty = no push notifications

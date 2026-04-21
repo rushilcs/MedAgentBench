@@ -1,0 +1,69 @@
+# OpenAI Reinforcement Fine-Tuning (RFT) pipeline for o4-mini on MedAgentBench.
+#
+# Run full pipeline:
+#   python rl_training/scripts/run_o4_mini_rft_pipeline.py \
+#     --config rl_training/configs/o4_mini_rft.yaml
+#
+# Individual stages:
+#   python rl_training/scripts/eval_o4_mini_baseline.py     --config rl_training/configs/o4_mini_rft.yaml
+#   python rl_training/scripts/build_rft_dataset.py         --config rl_training/configs/o4_mini_rft.yaml
+#   python rl_training/scripts/finetune_o4_mini_rft.py      --config rl_training/configs/o4_mini_rft.yaml
+#   python rl_training/scripts/eval_o4_mini_post_rft.py     --config rl_training/configs/o4_mini_rft.yaml
+
+env:
+  fhir_api_base: "http://localhost:8080/fhir/"
+  max_rounds: 8
+  data_file: "data/medagentbench/test_data_v2.json"
+  func_file: "data/medagentbench/funcs_v1.json"
+
+reward:
+  success: 1.0
+  failure: 0.0
+  invalid_action: -0.1
+  step_penalty: -0.01
+  valid_retrieval_bonus: 0.1
+  valid_post_bonus: 0.05
+
+training_data:
+  tasks_per_type: 40
+  seed: 42
+
+rft:
+  # o4-mini is the only RFT-supported model as of 2025-04; hardcode the snapshot.
+  base_model: "o4-mini-2025-04-16"
+  suffix: "medagent-rft-mini"
+  reasoning_effort: "medium"
+  n_train: 200
+  n_val: 50
+  seed: 42
+
+  # Grader configuration. Two backends are supported:
+  #   * "python"      → rl_training/rft/medagent_grader.py executed in the
+  #                     OpenAI sandbox (requires org entitlement; some accounts
+  #                     get python_grader_server_error_type='unauthorized_error')
+  #   * "score_model" → LLM-as-judge using rl_training/training/openai_rft_score_grader.py
+  #                     (works without python sandbox access; ~$30 extra in
+  #                     judge tokens per full RFT run)
+  grader_type: "score_model"
+  grader_image_tag: "2025-05-08"             # only used when grader_type == "python"
+  # score_model only accepts pinned snapshots — see openai_rft_score_grader.py.
+  # gpt-4.1-mini hits 93/93 on the smoke suite; gpt-4o-mini misreads task 8.
+  judge_model: "gpt-4.1-mini-2025-04-14"
+  judge_temperature: 0.0
+  judge_seed: 0
+  judge_max_completion_tokens: 512
+
+  # RFT training hyper-params (auto lets OpenAI pick sensible defaults for the run)
+  n_epochs: "auto"
+  compute_multiplier: "auto"
+  eval_interval: "auto"
+  eval_samples: "auto"
+  # Partial-credit weights (also used when we grade-debug locally)
+  partial_credit_finish_only: 0.4
+
+evaluation:
+  max_parallel: 5
+  max_tokens: 4096
+
+output:
+  run_dir: "rl_training/outputs/o4_mini_rft_run"

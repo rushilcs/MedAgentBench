@@ -34,6 +34,11 @@ def main() -> None:
     parser.add_argument("--output-dir", default="rl_training/outputs/pipeline")
     parser.add_argument("--skip-phase-a", action="store_true", help="Skip Phase A, use --initial-model instead")
     parser.add_argument("--initial-model", default=None, help="Model ID to start Phase B with (skips Phase A)")
+    parser.add_argument(
+        "--skip-phase-b",
+        action="store_true",
+        help="Skip Phase B (iterative GRPO); run baseline + Phase A SFT + evals only",
+    )
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -88,13 +93,20 @@ def main() -> None:
             json.dump({"model_id": current_model, "success_rate": phase_a_result.success_rate, "per_task_sr": phase_a_result.per_task_sr}, f, indent=2)
 
     # --- Phase B ---
-    logger.info("=== Phase B: GRPO Iterations ===")
-    grpo_store = TrajectoryStore(out_dir / "phase_b" / "grpo_trajectories.jsonl")
-    grpo_config = GRPOConfig.from_dict(config.get("phase_b", {}))
-    grpo_trainer = GRPOTrainer(
-        env=env, fine_tuner=fine_tuner, store=grpo_store, evaluator=evaluator, config=grpo_config,
-    )
-    final_model = grpo_trainer.run(training_tasks, initial_model_id=current_model)
+    grpo_trainer: GRPOTrainer | None = None
+    if args.skip_phase_b:
+        logger.info("=== Phase B: skipped (--skip-phase-b) ===")
+        final_model = current_model
+        training_history: list = []
+    else:
+        logger.info("=== Phase B: GRPO Iterations ===")
+        grpo_store = TrajectoryStore(out_dir / "phase_b" / "grpo_trajectories.jsonl")
+        grpo_config = GRPOConfig.from_dict(config.get("phase_b", {}))
+        grpo_trainer = GRPOTrainer(
+            env=env, fine_tuner=fine_tuner, store=grpo_store, evaluator=evaluator, config=grpo_config,
+        )
+        final_model = grpo_trainer.run(training_tasks, initial_model_id=current_model)
+        training_history = grpo_trainer.get_training_history()
 
     # --- Final evaluation ---
     logger.info("=== Final evaluation ===")
@@ -106,7 +118,7 @@ def main() -> None:
         "baseline": {"model_id": base_model, "success_rate": baseline_result.success_rate},
         "final": {"model_id": final_model, "success_rate": final_result.success_rate},
         "improvement": final_result.success_rate - baseline_result.success_rate,
-        "training_history": grpo_trainer.get_training_history(),
+        "training_history": training_history,
     }
     with open(out_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2, default=str)

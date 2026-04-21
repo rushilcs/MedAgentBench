@@ -55,6 +55,9 @@ def tasks_to_dataset(
         "eval_MRN": [],
         "instruction": [],
         "context": [],
+        # Full task JSON for refsol-aligned rewards (sol, etc.). TRL passes this
+        # into ``MedAgentBenchEnv.reset`` as a kwarg when present.
+        "ref_task_json": [],
     }
     for task in tasks:
         records["prompt"].append(task_to_prompt(task, fhir_api_base))
@@ -62,6 +65,7 @@ def tasks_to_dataset(
         records["eval_MRN"].append(task.get("eval_MRN", ""))
         records["instruction"].append(task["instruction"])
         records["context"].append(task["context"])
+        records["ref_task_json"].append(json.dumps(task, ensure_ascii=False))
     return Dataset.from_dict(records)
 
 

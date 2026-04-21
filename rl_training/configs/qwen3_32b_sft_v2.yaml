@@ -1,0 +1,62 @@
+# SFT v2: same hyperparams as run2, but points to the cleaned + augmented
+# corpus produced by build_sft_v2_corpus.py and writes to a fresh B2 prefix
+# so we can diff against run2 cleanly.
+
+model:
+  name_or_path: "Qwen/Qwen3-32B-Instruct"
+  fallback: "Qwen/Qwen3-32B"
+  torch_dtype: "bfloat16"
+  attn_implementation: "sdpa"
+
+qlora:
+  enabled: true
+  r: 64
+  alpha: 128
+  dropout: 0.05
+  target_modules: "all-linear"
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "bfloat16"
+
+sft:
+  num_train_epochs: 3
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 8
+  learning_rate: 1.0e-5
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  max_seq_length: 5120
+  disable_qwen_thinking: true
+  packing: false
+  completion_only_loss: true
+  bf16: true
+  gradient_checkpointing: true
+  save_steps: 100
+  save_strategy: "steps"
+  logging_steps: 10
+  seed: 42
+
+data:
+  # Produced by build_sft_v2_corpus.py: 1030 filtered v1 + 500 fresh
+  # programmatic = 1530 examples. All <think>-prefixed / prose-in-FINISH /
+  # FQDN-Patient-reference pollution removed. Programmatic teaches canonical
+  # POST payloads (relative subject ref) and strict numeric FINISH on the
+  # "no value" branches that v1 fumbled.
+  sft_jsonl: "rl_training/outputs/qwen_pipeline_v3/phase_a/qwen_sft_openai.jsonl"
+  training_tasks_path: "rl_training/outputs/qwen_pipeline_v3/phase_a/training_tasks_v2.json"
+
+output:
+  dir: "rl_training/outputs/qwen3_32b_sft_v2"
+  checkpoint_keep_last: 3
+  cloud_sync:
+    enabled: true
+    backend: "b2"
+    bucket: "medagentbench-checkpoint"
+    prefix: "qwen3_32b_run3/qwen3_32b_sft_v2_ckpts"
+
+resilience:
+  heartbeat_path: "/tmp/trainer_heartbeat"
+  heartbeat_stale_seconds: 900
+  max_runtime_hours: 8
+  ntfy_topic: ""

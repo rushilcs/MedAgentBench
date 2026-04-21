@@ -4,7 +4,10 @@ import json
 import logging
 from typing import Any
 
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn
+from rich.progress import (
+    BarColumn, MofNCompleteColumn, Progress, SpinnerColumn,
+    TextColumn, TimeElapsedColumn, TimeRemainingColumn,
+)
 
 from rl_training.env.medagent_env import MedAgentEnv
 from rl_training.env.reward import RewardConfig, compute_episode_reward
@@ -48,21 +51,36 @@ class Evaluator:
         policy = OpenAIPolicy(model_id=model_id, temperature=temperature)
         return self.evaluate_with_policy(policy)
 
-    def evaluate_with_policy(self, policy: BasePolicy) -> EvalResult:
-        """Run an arbitrary policy on all benchmark tasks."""
+    def evaluate_with_policy(
+        self, policy: BasePolicy, return_trajectories: bool = False,
+    ) -> EvalResult | tuple[EvalResult, list[Trajectory]]:
+        """Run an arbitrary policy on all benchmark tasks.
+
+        The progress bar shows a running correctness percentage and ETA, so
+        you can gauge mid-run whether the model is tracking the baseline.
+        """
         trajectories: list[Trajectory] = []
         failed = 0
+        correct = 0
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             MofNCompleteColumn(),
+            TextColumn("  SR={task.fields[sr]:.1%}"),
+            TimeElapsedColumn(),
+            TextColumn("ETA"),
+            TimeRemainingColumn(),
         ) as progress:
-            eval_task = progress.add_task("Evaluating", total=len(self.benchmark_tasks))
-            for task in self.benchmark_tasks:
+            eval_task = progress.add_task(
+                "Evaluating", total=len(self.benchmark_tasks), sr=0.0,
+            )
+            for i, task in enumerate(self.benchmark_tasks):
                 try:
                     traj = self._rollout(policy, task)
                     trajectories.append(traj)
+                    if traj.correct:
+                        correct += 1
                 except Exception as exc:
                     logger.error("Rollout failed for %s: %s", task.get("id", "?"), exc)
                     failed += 1
@@ -70,11 +88,16 @@ class Evaluator:
                         task=task, history=[], correct=False, status="error",
                         model_id=getattr(policy, "model_id", ""),
                     ))
-                progress.advance(eval_task)
+                progress.update(
+                    eval_task, advance=1, sr=correct / max(1, i + 1),
+                )
 
         if failed:
             logger.warning("%d/%d tasks failed during evaluation", failed, len(self.benchmark_tasks))
-        return compute_metrics(trajectories)
+        result = compute_metrics(trajectories)
+        if return_trajectories:
+            return result, trajectories
+        return result
 
     def evaluate_subset(self, model_id: str, task_types: list[int], temperature: float = 0.0) -> EvalResult:
         """Evaluate only on specific task types."""

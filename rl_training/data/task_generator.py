@@ -153,3 +153,23 @@ class TaskGenerator:
         for task_type in range(1, 11):
             all_tasks.extend(self.generate_tasks(task_type, count_per_type))
         return all_tasks
+
+    def generate_stress_variants(
+        self,
+        base_tasks: list[dict[str, Any]],
+        perturbations: list[str] | None = None,
+        seed: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Return perturbed copies of ``base_tasks`` using timeline_perturb.
+
+        Useful for optionally mixing stress examples into the training
+        distribution so the policy is exposed to temporal noise during RL.
+        By default this is off in ``qwen3_32b_grpo.yaml``; enable it in the
+        clinical YAML by setting ``data.include_stress_variants: true``.
+        """
+        from rl_training.data.timeline_perturb import perturb_tasks_multi
+        per_name = perturb_tasks_multi(base_tasks, perturbations=perturbations, seed=seed)
+        out: list[dict[str, Any]] = []
+        for tasks in per_name.values():
+            out.extend(tasks)
+        return out

@@ -1,0 +1,150 @@
+# GRPO config for Qwen3-32B on MedAgentBench, warm-started from the
+# SFT v2 merged base (which itself was QLoRA-trained on the
+# expert_collector_v2 corpus and hit 77.3% SR @ 300 tasks).
+#
+# Differences from qwen3_32b_grpo_post_sft.yaml:
+#   - model.name_or_path -> /workspace/qwen3_32b_sft_v2_merged (from B2 prefix qwen3_32b_run3/qwen3_32b_sft_v2_merged)
+#   - Benchmark-aligned GRPO: refsol terminal reward + shaping (see benchmark_reward).
+#     Proxy TRL rewards are disabled when benchmark_reward.enabled is true.
+#   - max_steps: 100 (initial conservative pass; extend if monotonic gain).
+#   - vllm.max_model_len: 8192 + max_num_seqs: 4 (longer FHIR responses, faster rollouts on dedicated H100).
+#   - data.training_tasks_path: training_tasks_v2.json (the same task distribution SFT v2 was trained on).
+#   - output dir + cloud_sync.prefix: distinct (qwen3_32b_run3/grpo_v2_ckpts).
+#
+# Consumed by rl_training/scripts/train_grpo_32b.py via launch_runpod.sh STAGE=grpo.
+
+model:
+  name_or_path: "/workspace/qwen3_32b_sft_v2_merged"
+  fallback: "Qwen/Qwen3-32B"
+  torch_dtype: "bfloat16"
+  attn_implementation: "sdpa"
+
+qlora:
+  enabled: true
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: "all-linear"
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "bfloat16"
+
+# launch_runpod.sh uses 2-way DDP (GRPO_TORCHRUN_PROCS default 2) when vllm.use_vllm=false.
+# TRL requires (per_device_train_batch_size * world_size * gradient_accumulation_steps) % num_generations == 0
+# (here 1*2*4=8, num_generations=4).
+grpo:
+  max_steps: 100
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  # Plan §10: start n=4; after SR plateaus, drop to 2 and adjust accum so
+  # (per_device * world_size * grad_accum) % num_generations == 0.
+  num_generations: 4
+  max_prompt_length: 4096
+  # Per-turn cap (query-heavy 512–768; hard ceiling 1024 in runbook).
+  max_completion_length: 768
+  learning_rate: 5.0e-6
+  # KL anchor to SFT reference — increase (e.g. double) if p95 tokens rise without SR gain.
+  beta: 0.08
+  epsilon: 0.2
+  temperature: 0.9
+  top_p: 0.95
+  gradient_checkpointing: true
+  bf16: true
+  save_steps: 10
+  logging_steps: 1
+  log_completions: true
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  lr_scheduler_type: "cosine"
+  seed: 42
+  # Plan §10: run offline MedAgentBench eval every ~50 optimizer steps; gate on
+  # SR / invalid% / limit% / avg steps / p95 tokens / GET duplication.
+  eval_every_steps: 50
+
+vllm:
+  # QLoRA + TRL server-mode weight sync fails vLLM load_weights (shape assert on
+  # Qwen3 fused layers) even with vllm_model_impl=transformers. Keep server config
+  # for a future TRL/vLLM fix; set use_vllm true again when resolved.
+  use_vllm: false
+  mode: "server"
+  host: "127.0.0.1"
+  port: 8000
+  gpu_memory_utilization: 0.9
+  max_num_seqs: 4
+  max_model_len: 8192
+  tensor_parallel_size: 1
+  # TRL weight sync from QLoRA merge_adapter() matches HF layouts; native vllm
+  # kernels can assert on shape. Set to "vllm" only if you know the stack matches.
+  vllm_model_impl: "transformers"
+
+env:
+  fhir_api_base: "http://localhost:8080/fhir/"
+  func_file: "data/medagentbench/funcs_v1.json"
+  max_rounds: 8
+  use_fhir_snapshot: true    # replay from snapshot on pod (no Mac tunnel required)
+  snapshot_path: "rl_training/outputs/fhir_snapshot.jsonl"
+  snapshot_fallthrough: true
+
+# When benchmark_reward.enabled is true, only benchmark_aligned_reward runs.
+# Weights below apply to the legacy proxy stack if benchmark mode is off.
+rewards:
+  correctness_weight: 1.0
+  efficiency_weight: 0.3
+  tool_usage_weight: 0.2
+  temporal_grounding_enabled: false
+  temporal_grounding_weight: 0.0
+  risk_calibrated_deferral_enabled: false
+  risk_calibrated_deferral_weight: 0.0
+  decision_density_enabled: false
+  decision_density_weight: 0.0
+
+# Benchmark-first RL (plan): refsol pass + shaping; JSONL rollouts for debugging.
+benchmark_reward:
+  enabled: true
+  rollout_log_path: "rl_training/outputs/qwen3_32b_grpo_v2/rollouts.jsonl"
+  rollout_log_fraction: 0.12
+  max_rounds: 8
+  r_succ: 10.0
+  r_step: -0.03
+  r_exec: 0.05
+  r_redundant_get: -0.25
+  r_premature_post: -0.8
+  r_first_invalid: -3.0
+  efficiency_bonus_max: 0.4
+  canonicalize: true
+  # A3/A4 ablation: set true or export MEDAGENT_RL_FSM_DECODE=1 for first-line extraction.
+  fsm_constrained_decode: false
+  # Plan §5 / §9: soft query/action skew (optional). Disabled by default.
+  curriculum:
+    enabled: false
+    query_target_fraction: 0.7
+    seed: 42
+
+# Eval gates (operator): track each offline eval — overall SR, invalid%, limit%,
+# avg steps, p95 tokens/turn, GET duplication. Stop if held-out SR gain < 0.5%
+# abs over 3 evals OR invalid-rate rises >0.5% abs vs SFT (plan §10).
+
+data:
+  training_tasks_path: "rl_training/outputs/qwen_pipeline_v3/phase_a/training_tasks_v2.json"
+  benchmark_tasks_path: "data/medagentbench/test_data_v2.json"
+  tasks_per_type: 30
+  include_stress_variants: false
+  seed: 42
+
+output:
+  dir: "rl_training/outputs/qwen3_32b_grpo_v2"
+  checkpoint_keep_last: 3
+  cloud_sync:
+    enabled: true
+    backend: "b2"
+    bucket: "medagentbench-checkpoint"
+    prefix: "qwen3_32b_run3/grpo_v2_ckpts"
+
+resilience:
+  heartbeat_path: "/tmp/trainer_heartbeat"
+  # GRPO steps (HF generate) often take 10–20+ minutes; heartbeat updates only
+  # between steps. Must exceed worst-case step time or watchdog stops the pod.
+  heartbeat_stale_seconds: 14400
+  # 100 GRPO steps can exceed 8h wall-clock on HF-generate; watchdog uses this.
+  max_runtime_hours: 48
+  ntfy_topic: ""

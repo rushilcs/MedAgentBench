@@ -176,6 +176,18 @@ class MedAgentEnv:
             return False
 
 
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> "MedAgentEnv":
+        """Construct from a config dict (matching ``rl_training/configs/default.yaml``)."""
+        with open(config["env"]["func_file"]) as f:
+            funcs = json.load(f)
+        return cls(
+            fhir_api_base=config["env"]["fhir_api_base"],
+            funcs=funcs,
+            max_rounds=config["env"].get("max_rounds", 8),
+        )
+
+
 class _ResultsProxy:
     """Lightweight proxy matching the interface expected by refsol grader functions.
 

@@ -1,3 +1,13 @@
+# OpenAI fine-tuning pipeline for MedAgentBench — mirrors the 4o setup but uses the
+# fine-tunable gpt-4o-mini snapshot (same benchmark: data/medagentbench/test_data_v2.json).
+#
+# Run:
+#   python rl_training/scripts/run_pipeline.py \
+#     --config rl_training/configs/gpt4o_mini_openai.yaml \
+#     --output-dir rl_training/outputs/gpt4o_mini_pipeline
+#
+# Use --skip-phase-b for Phase A (SFT) only to save time/API cost.
+
 env:
   fhir_api_base: "http://localhost:8080/fhir/"
   max_rounds: 8
@@ -20,7 +30,8 @@ phase_a:
   expert_model: "gpt-4o"
   use_programmatic: true
   ft_epochs: 3
-  base_model: "gpt-4o-2024-08-06"
+  # Fine-tuning base (must be a model OpenAI allows for /v1/fine_tuning/jobs)
+  base_model: "gpt-4o-mini-2024-07-18"
 
 phase_b:
   trajectories_per_task: 5
@@ -29,7 +40,7 @@ phase_b:
   selection_method: "above_mean"
   min_trajectories: 50
   ft_epochs: 3
-  base_model: "gpt-4o-2024-08-06"
+  base_model: "gpt-4o-mini-2024-07-18"
 
 evaluation:
   temperature: 0.0
