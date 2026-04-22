@@ -249,9 +249,22 @@ class FhirSnapshot:
 
 def _default_live_getter(url: str) -> dict[str, Any]:
     """Hit the FHIR server directly. Mirrors
-    ``src.server.tasks.medagentbench.utils.send_get_request``."""
+    ``src.server.tasks.medagentbench.utils.send_get_request``.
+
+    If FHIR_LIVE_BASE_OVERRIDE is set (e.g. a Cloudflare Tunnel pointing at a
+    dev box's docker FHIR), rewrite localhost:8080/fhir on the wire so cache
+    keys stay canonical (localhost) while the actual hop traverses the
+    override. This makes both eval and trainer reach the same live FHIR with
+    no per-call plumbing.
+    """
+    override = os.environ.get("FHIR_LIVE_BASE_OVERRIDE", "").strip()
+    target = url
+    if override and "localhost:8080/fhir" in url:
+        target = url.replace(
+            "http://localhost:8080/fhir", override.rstrip("/") + "/fhir"
+        )
     try:
-        resp = requests.get(url, timeout=30)
+        resp = requests.get(target, timeout=30)
         resp.raise_for_status()
         ct = resp.headers.get("Content-Type", "")
         data = resp.json() if "json" in ct else resp.text
