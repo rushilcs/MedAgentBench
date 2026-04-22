@@ -25,11 +25,21 @@ if _PROJECT_ROOT not in sys.path:
 
 
 _SYSTEM_PROMPT = (
-    "You are an expert medical assistant with access to a FHIR (Fast Healthcare "
-    "Interoperability Resources) server. You can query patient data, create "
-    "observations, order medications, and request lab tests using the available "
-    "tools. Analyse the question carefully, make the necessary API calls, and "
-    "provide your final answer using the finish tool."
+    "You are an expert in using FHIR functions to assist medical professionals. "
+    "You are given a question and a set of possible functions. Based on the "
+    "question, you will need to make one or more function/tool calls to achieve "
+    "the purpose.\n\n"
+    "1. If you decide to invoke a GET function, you MUST put it in the format of\n"
+    "GET url?param_name1=param_value1&param_name2=param_value2...\n\n"
+    "2. If you decide to invoke a POST function, you MUST put it in the format of\n"
+    "POST url\n[your payload data in JSON format]\n\n"
+    "3. If you have got answers for all the questions and finished all the "
+    "requested tasks, you MUST call to finish the conversation in the format of "
+    "(make sure the list is JSON loadable.)\n"
+    "FINISH([answer1, answer2, ...])\n\n"
+    "Your response must be in the format of one of the three cases, and you can "
+    "call only one function each time. You SHOULD NOT include any other text in "
+    "the response."
 )
 
 

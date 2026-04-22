@@ -310,8 +310,29 @@ def main() -> None:
         return
 
     # --- Heavy imports only past the dry-run gate ---
+    from transformers import AutoTokenizer
     from trl import GRPOConfig, GRPOTrainer
     from rl_training.env.trl_env import MedAgentBenchEnv
+
+    # FIX A1: Disable Qwen3 thinking mode in GRPO rollouts.
+    # SFT v2 was trained with enable_thinking=False (see sft_qwen3_32b.py).
+    # Without this patch, GRPO renders prompts with thinking enabled and the
+    # policy spends most of its completion budget inside <think> blocks
+    # without ever emitting a tool call -> 0-1 step rollouts, avg_correct=0.
+    # Eval (run_post_train_eval.py --enable-thinking false) confirms SFT v2
+    # only behaves correctly with thinking off, so GRPO must match.
+    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    if cfg.get("env", {}).get("disable_qwen_thinking", True):
+        _orig_apply = tokenizer.apply_chat_template
+
+        def _apply_no_thinking(*p_args, **p_kwargs):
+            p_kwargs.setdefault("enable_thinking", False)
+            return _orig_apply(*p_args, **p_kwargs)
+
+        tokenizer.apply_chat_template = _apply_no_thinking  # type: ignore[assignment]
+        logger.info("Patched tokenizer.apply_chat_template to enable_thinking=False")
 
     peft_config = _build_peft_config(cfg["qlora"])
     quant_config = _build_quant_config(cfg["qlora"])
@@ -404,6 +425,7 @@ def main() -> None:
         model=model_id,
         args=grpo_config,
         peft_config=peft_config,
+        processing_class=tokenizer,
         train_dataset=dataset,
         reward_funcs=reward_funcs,
         environment_factory=MedAgentBenchEnv,
