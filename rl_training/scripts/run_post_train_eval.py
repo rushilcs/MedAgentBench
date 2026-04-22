@@ -20,6 +20,25 @@ higher without the LoRA hot-swap).
 Trajectories, summary, and clinical metrics are written to
 ``--output-dir`` in the same layout as ``run_baseline_eval.py`` so the two
 runs can be diffed directly.
+
+Known model-side gaps (NOT infra bugs; tracked separately from the FHIR
+snapshot dict-vs-str fix that landed in this file):
+
+* **task9** -- the SFT v2 model emits a 3-element FINISH payload like
+  ``[4.5, "No replacement potassium needed", "Order placed"]`` but
+  ``refsol.task9`` only accepts ``[last_value]`` or ``[]``. This is a prompt
+  / training-data shape mismatch -- the SFT corpus did not constrain the
+  FINISH list shape for conditional-order tasks. Address by either
+  retraining with a stricter task9 schema or post-processing the FINISH
+  payload to its first element when the task is task9-shaped.
+* **task10** -- when no A1C exists, ``refsol.task10`` requires a
+  ``ServiceRequest`` POST in addition to ``FINISH([-1])``. The SFT v2 model
+  currently only emits the FINISH. Same root cause -- training data didn't
+  teach the "no result -> still order" branch. Address by augmenting the
+  SFT corpus with the missing ServiceRequest expert trajectories.
+
+Both issues are expected to leave task9/task10 SR low even after the
+dict->str grader fix lands; everything else (tasks 1-8) should recover.
 """
 
 from __future__ import annotations
@@ -133,7 +152,17 @@ def main() -> None:
         )
 
         def _patched_send_get(url, params=None, headers=None):  # noqa: ARG001
-            return snap.send_get_request(url)
+            # Mirrors the trainer (train_grpo_32b.py): refsol does
+            # ``json.loads(send_get_request(...)['data'])`` because the
+            # original ``utils.send_get_request`` returns text for HAPI's
+            # ``application/fhir+json``. ``FhirSnapshot`` already coerces
+            # dict/list -> str in its return path; this wrapper is
+            # belt-and-suspenders so a future regression in the snapshot
+            # cannot silently zero out grader scores again.
+            res = snap.send_get_request(url)
+            if "data" in res and not isinstance(res["data"], str):
+                res = {**res, "data": json.dumps(res["data"])}
+            return res
 
         import src.server.tasks.medagentbench.utils as _mb_utils
         import src.server.tasks.medagentbench.refsol as _refsol

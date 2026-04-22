@@ -34,6 +34,22 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 import requests
 
 
+def _coerce_data_to_str(data: Any) -> Any:
+    """Return ``data`` as a JSON string when it's a dict/list, else as-is.
+
+    Refsol graders expect the original ``utils.send_get_request`` contract,
+    where ``data`` is a string (HAPI returns ``application/fhir+json``, which
+    the original strict ``== 'application/json'`` check falls through to text).
+    Snapshot rows historically stored already-parsed dicts because the live
+    getter used a loose ``"json" in ct`` substring match. Coercing here keeps
+    every caller (refsol grader, env, trainer) on the same string contract
+    regardless of how the row was recorded.
+    """
+    if isinstance(data, (dict, list)):
+        return json.dumps(data)
+    return data
+
+
 def _canonicalize_url(url: str) -> str:
     """Return a canonical form of a FHIR URL.
 
@@ -176,7 +192,7 @@ class FhirSnapshot:
 
         if entry is not None:
             self._hits += 1
-            return {"status_code": entry.status_code, "data": entry.data}
+            return {"status_code": entry.status_code, "data": _coerce_data_to_str(entry.data)}
 
         # Miss path: in replay-strict mode, return an error without hitting live.
         if self.mode == "replay" and not self.fallthrough:
@@ -205,7 +221,7 @@ class FhirSnapshot:
             self._append_to_disk(entry)
 
         self._misses += 1
-        return {"status_code": entry.status_code, "data": entry.data}
+        return {"status_code": entry.status_code, "data": _coerce_data_to_str(entry.data)}
 
     # ------------------------------------------------------------------ util
 
@@ -266,8 +282,12 @@ def _default_live_getter(url: str) -> dict[str, Any]:
     try:
         resp = requests.get(target, timeout=30)
         resp.raise_for_status()
+        # Mirror the original src.server.tasks.medagentbench.utils.send_get_request
+        # behavior: only parse on strict 'application/json'. HAPI FHIR returns
+        # 'application/fhir+json', which falls through to text -- which is what
+        # refsol's `json.loads(...['data'])` expects.
         ct = resp.headers.get("Content-Type", "")
-        data = resp.json() if "json" in ct else resp.text
+        data = resp.json() if ct == "application/json" else resp.text
         return {"status_code": resp.status_code, "data": data}
     except Exception as exc:
         return {"error": str(exc)}
