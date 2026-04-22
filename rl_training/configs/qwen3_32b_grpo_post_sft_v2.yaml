@@ -81,15 +81,18 @@ env:
   fhir_api_base: "http://localhost:8080/fhir/"
   func_file: "data/medagentbench/funcs_v1.json"
   max_rounds: 8
-  use_fhir_snapshot: true    # replay from snapshot on pod (no Mac tunnel required)
+  use_fhir_snapshot: true
   snapshot_path: "rl_training/outputs/fhir_snapshot.jsonl"
-  # Strict snapshot mode: misses return {"error": "cache miss"} instead of
-  # silently triggering live HTTP. The 2026-04-21 wasted run used
-  # fallthrough=true; misses then hit a non-existent FHIR on the pod and
-  # zeroed out r_succ for every rollout. The new smoke gate
-  # (smoke_grpo_pipeline.py --snapshot-only) verifies coverage before
-  # deploy, so strict is now safe and required.
-  snapshot_fallthrough: false
+  # Hybrid mode: snapshot serves the ~20k pre-recorded URLs at zero
+  # latency; misses fall through to live FHIR via FHIR_LIVE_BASE_OVERRIDE
+  # (e.g. a Cloudflare Tunnel pointing at the dev box's docker FHIR) AND
+  # are appended to the snapshot file -- so coverage grows organically
+  # while the model emits novel-but-valid query shapes (date= prefixes,
+  # FHIR search modifiers like code:text=, category filters, etc).
+  # If FHIR_LIVE_BASE_OVERRIDE is unset, misses still try localhost on
+  # the pod (which has no FHIR) and return an error -- snapshot-only
+  # behaviour, identical to fallthrough=false.
+  snapshot_fallthrough: true
 
 # When benchmark_reward.enabled is true, only benchmark_aligned_reward runs.
 # Weights below apply to the legacy proxy stack if benchmark mode is off.

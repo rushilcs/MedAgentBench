@@ -195,28 +195,47 @@ def main() -> None:
     # Install global FHIR snapshot if configured
     if cfg["env"].get("use_fhir_snapshot"):
         from rl_training.env.fhir_snapshot import (
-            FhirSnapshot, install_global_snapshot,
+            FhirSnapshot, _default_live_getter, install_global_snapshot,
         )
         snap_path = cfg["env"]["snapshot_path"]
         mode = "replay" if cfg["env"].get("snapshot_fallthrough", True) else "replay"
-        # Diagnostic miss-log: when fallthrough is off, every cache miss is
-        # appended to outputs/snapshot_misses.jsonl (deduped per canonical
-        # URL). If avg_correct stalls at 0, this file shows exactly which
-        # URL shapes the policy is emitting that we haven't pre-recorded,
-        # so we can rebuild the snapshot without restarting the trainer.
+        # Diagnostic miss-log: every cache miss is appended (deduped) to
+        # snapshot_misses.jsonl. With fallthrough on we still record what
+        # the policy hits live so we can grow the offline snapshot.
         miss_log = os.path.join(
             cfg.get("output_dir", "rl_training/outputs/qwen3_32b_grpo_v2"),
             "snapshot_misses.jsonl",
         )
+
+        # Cache-miss fallthrough router. The model's prompt always says
+        # ``http://localhost:8080/fhir/...`` so every URL the policy emits
+        # is keyed by that netloc. When FHIR_LIVE_BASE_OVERRIDE is set
+        # (e.g. a Cloudflare Tunnel pointing at the dev box's docker FHIR)
+        # we rewrite the netloc on the *live* hop only -- cache keys stay
+        # ``localhost:8080`` so the static snapshot built locally still
+        # serves hits, and only true misses traverse the tunnel.
+        live_override = os.environ.get("FHIR_LIVE_BASE_OVERRIDE", "").strip()
+
+        def _live_router(url: str) -> dict:
+            target = url
+            if live_override and "localhost:8080/fhir" in url:
+                target = url.replace("http://localhost:8080/fhir",
+                                     live_override.rstrip("/") + "/fhir")
+            return _default_live_getter(target)
+
         snap = FhirSnapshot(
             mode=mode,
             path=snap_path,
             fallthrough=bool(cfg["env"].get("snapshot_fallthrough", True)),
             miss_log_path=miss_log,
+            live_getter=_live_router,
         )
         install_global_snapshot(snap)
-        logger.info("Installed FHIR snapshot: %s (%d cached rows); miss log: %s",
-                    snap_path, len(snap._cache), miss_log)  # noqa: SLF001
+        logger.info(
+            "Installed FHIR snapshot: %s (%d cached rows); miss log: %s; live override: %s",
+            snap_path, len(snap._cache), miss_log,  # noqa: SLF001
+            live_override or "<none>",
+        )
 
         # refsol graders call ``utils.send_get_request`` directly, which bypasses
         # ``MedAgentBenchEnv`` snapshot routing. Patch the same trio as
