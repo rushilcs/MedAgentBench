@@ -199,14 +199,24 @@ def main() -> None:
         )
         snap_path = cfg["env"]["snapshot_path"]
         mode = "replay" if cfg["env"].get("snapshot_fallthrough", True) else "replay"
+        # Diagnostic miss-log: when fallthrough is off, every cache miss is
+        # appended to outputs/snapshot_misses.jsonl (deduped per canonical
+        # URL). If avg_correct stalls at 0, this file shows exactly which
+        # URL shapes the policy is emitting that we haven't pre-recorded,
+        # so we can rebuild the snapshot without restarting the trainer.
+        miss_log = os.path.join(
+            cfg.get("output_dir", "rl_training/outputs/qwen3_32b_grpo_v2"),
+            "snapshot_misses.jsonl",
+        )
         snap = FhirSnapshot(
             mode=mode,
             path=snap_path,
             fallthrough=bool(cfg["env"].get("snapshot_fallthrough", True)),
+            miss_log_path=miss_log,
         )
         install_global_snapshot(snap)
-        logger.info("Installed FHIR snapshot: %s (%d cached rows)",
-                    snap_path, len(snap._cache))  # noqa: SLF001
+        logger.info("Installed FHIR snapshot: %s (%d cached rows); miss log: %s",
+                    snap_path, len(snap._cache), miss_log)  # noqa: SLF001
 
         # refsol graders call ``utils.send_get_request`` directly, which bypasses
         # ``MedAgentBenchEnv`` snapshot routing. Patch the same trio as

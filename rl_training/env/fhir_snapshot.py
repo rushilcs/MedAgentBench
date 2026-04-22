@@ -83,6 +83,7 @@ class FhirSnapshot:
         path: str | None = None,
         fallthrough: bool = True,
         live_getter: Callable[[str], dict[str, Any]] | None = None,
+        miss_log_path: str | None = None,
     ):
         if mode not in {"record", "replay", "off"}:
             raise ValueError(f"Unknown mode: {mode!r}")
@@ -96,6 +97,13 @@ class FhirSnapshot:
         self._misses = 0
         self._live_calls = 0
         self._loaded_from: str | None = None
+        # Diagnostic: when set (or via FHIR_SNAPSHOT_MISS_LOG env), every cache
+        # miss is appended as one JSON line. If avg_correct stays at 0 we read
+        # this file to know exactly which URLs the policy is emitting that we
+        # never recorded -- no guesswork required to expand the snapshot.
+        self.miss_log_path = miss_log_path or os.environ.get("FHIR_SNAPSHOT_MISS_LOG")
+        self._miss_log_lock = threading.Lock()
+        self._miss_seen: set[str] = set()
 
         if path and mode in {"replay", "off"} and os.path.exists(path):
             self.load(path)
@@ -173,6 +181,7 @@ class FhirSnapshot:
         # Miss path: in replay-strict mode, return an error without hitting live.
         if self.mode == "replay" and not self.fallthrough:
             self._misses += 1
+            self._log_miss(key, raw_url=url)
             return {"error": f"FHIR snapshot cache miss for: {key}"}
 
         # Hit the live server.
@@ -199,6 +208,28 @@ class FhirSnapshot:
         return {"status_code": entry.status_code, "data": entry.data}
 
     # ------------------------------------------------------------------ util
+
+    def _log_miss(self, canonical_key: str, raw_url: str) -> None:
+        """Append a one-line JSON record for one cache miss (deduped per key).
+
+        No-op when ``miss_log_path`` is not set. Best-effort: never raises so
+        that diagnostic plumbing can't fail a rollout.
+        """
+        if not self.miss_log_path:
+            return
+        with self._miss_log_lock:
+            if canonical_key in self._miss_seen:
+                return
+            self._miss_seen.add(canonical_key)
+            try:
+                Path(self.miss_log_path).parent.mkdir(parents=True, exist_ok=True)
+                with open(self.miss_log_path, "a") as f:
+                    f.write(json.dumps({
+                        "canonical": canonical_key,
+                        "raw": raw_url,
+                    }) + "\n")
+            except Exception:
+                pass
 
     def stats(self) -> dict[str, int]:
         return {
