@@ -221,6 +221,42 @@ def main() -> None:
 
     trajectories: list[Trajectory] = []
     correct_count = 0
+    # Live per-task SR is logged every PROGRESS_LOG_EVERY tasks so the user
+    # can monitor accuracy from the tee'd log file (the rich progress bar
+    # gets clobbered by httpx INFO logs in non-TTY contexts). We also write
+    # a lightweight progress.json snapshot so external watchers can poll
+    # without parsing the log.
+    progress_log_every = max(1, int(os.environ.get("EVAL_PROGRESS_LOG_EVERY", "10")))
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    progress_path = out_dir / "progress.json"
+    per_task_running: dict[str, dict[str, int]] = {}
+
+    def _per_task_summary() -> dict[str, float]:
+        return {
+            tid: (s["correct"] / s["total"]) if s["total"] else 0.0
+            for tid, s in sorted(
+                per_task_running.items(),
+                key=lambda kv: int(kv[0].replace("task", "")),
+            )
+        }
+
+    def _write_progress(i: int, total: int) -> None:
+        try:
+            with open(progress_path, "w") as fp:
+                json.dump({
+                    "completed": i,
+                    "total": total,
+                    "overall_sr": correct_count / max(1, i),
+                    "correct": correct_count,
+                    "per_task_sr": _per_task_summary(),
+                    "per_task_n": {
+                        k: v["total"] for k, v in per_task_running.items()
+                    },
+                }, fp, indent=2)
+        except Exception:
+            pass
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -235,10 +271,12 @@ def main() -> None:
             "Evaluating (post-train)", total=len(benchmark_tasks), sr=0.0,
         )
         for i, task in enumerate(benchmark_tasks):
+            tid = str(task.get("id", "")).split("_")[0] or "unknown"
             try:
                 traj = evaluator._rollout(policy, task)  # noqa: SLF001
                 trajectories.append(traj)
-                if traj.correct:
+                ok = bool(traj.correct)
+                if ok:
                     correct_count += 1
             except Exception as exc:
                 logger.warning("Rollout failed for %s: %s", task.get("id"), exc)
@@ -246,13 +284,30 @@ def main() -> None:
                     task=task, history=[], correct=False, status="error",
                     model_id=served_model,
                 ))
-            progress.update(pt, advance=1, sr=correct_count / max(1, i + 1))
+                ok = False
+            slot = per_task_running.setdefault(tid, {"correct": 0, "total": 0})
+            slot["total"] += 1
+            if ok:
+                slot["correct"] += 1
+
+            done = i + 1
+            progress.update(pt, advance=1, sr=correct_count / max(1, done))
+            if done % progress_log_every == 0 or done == len(benchmark_tasks):
+                pt_summary = ", ".join(
+                    f"{tid}={sr:.0%}({per_task_running[tid]['correct']}/{per_task_running[tid]['total']})"
+                    for tid, sr in _per_task_summary().items()
+                )
+                logger.info(
+                    "progress %d/%d  overall_sr=%.1f%%  per_task=[%s]",
+                    done, len(benchmark_tasks),
+                    100 * correct_count / done,
+                    pt_summary,
+                )
+                _write_progress(done, len(benchmark_tasks))
 
     result = compute_metrics(trajectories)
     print("\n" + result.summary())
 
-    out_dir = Path(args.output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_dir / "eval.json", "w") as f:
         json.dump({
             "model_id": served_model,
