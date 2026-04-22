@@ -312,7 +312,13 @@ def main() -> None:
     # --- Heavy imports only past the dry-run gate ---
     from transformers import AutoTokenizer
     from trl import GRPOConfig, GRPOTrainer
-    from rl_training.env.trl_env import MedAgentBenchEnv
+
+    # ``env.action_format: plain_text`` selects the MedAgentBench paper's
+    # GET/POST/FINISH interface (matches our 75% SFT v2 baseline + the
+    # Claude 3.5 Sonnet 69.67% leaderboard number). Anything else falls back
+    # to the legacy JSON-tool ``MedAgentBenchEnv`` flow.
+    action_format = (cfg.get("env", {}) or {}).get("action_format", "json_tool")
+    use_plain_rollout = action_format == "plain_text"
 
     # FIX A1: Disable Qwen3 thinking mode in GRPO rollouts.
     # SFT v2 was trained with enable_thinking=False (see sft_qwen3_32b.py).
@@ -421,16 +427,57 @@ def main() -> None:
         args.resume_from_checkpoint, cloud_cfg, output_dir,
     )
 
-    trainer = GRPOTrainer(
+    trainer_kwargs: dict[str, Any] = dict(
         model=model_id,
         args=grpo_config,
         peft_config=peft_config,
         processing_class=tokenizer,
         train_dataset=dataset,
         reward_funcs=reward_funcs,
-        environment_factory=MedAgentBenchEnv,
         callbacks=callbacks or None,
     )
+
+    if use_plain_rollout:
+        from rl_training.env.medagent_env import MedAgentEnv
+        from rl_training.rl.medagent_plain_rollout import (
+            _build_task_lookup,
+            make_medagent_plain_rollout,
+        )
+
+        env_cfg = cfg["env"]
+        with open(env_cfg["func_file"]) as fh:
+            funcs = json.load(fh)
+        max_rounds = int(env_cfg.get("max_rounds", 8))
+        fhir_api_base = env_cfg["fhir_api_base"]
+
+        def _env_factory():
+            return MedAgentEnv(
+                fhir_api_base=fhir_api_base,
+                funcs=funcs,
+                max_rounds=max_rounds,
+            )
+
+        task_lookup = _build_task_lookup(dataset)
+        logger.info(
+            "Plain-text rollout enabled (action_format=plain_text); built "
+            "prompt-hash task lookup for %d tasks",
+            len(task_lookup),
+        )
+        trainer_kwargs["rollout_func"] = make_medagent_plain_rollout(
+            tokenizer=tokenizer,
+            env_factory=_env_factory,
+            max_rounds=max_rounds,
+            max_completion_length=int(cfg["grpo"]["max_completion_length"]),
+            temperature=float(cfg["grpo"].get("temperature", 0.9)),
+            top_p=float(cfg["grpo"].get("top_p", 0.95)),
+            task_lookup=task_lookup,
+            fhir_api_base=fhir_api_base,
+        )
+    else:
+        from rl_training.env.trl_env import MedAgentBenchEnv
+        trainer_kwargs["environment_factory"] = MedAgentBenchEnv
+
+    trainer = GRPOTrainer(**trainer_kwargs)
 
     logger.info(
         "Starting GRPO on %s | steps=%d | G=%d | bs=%d | grad_accum=%d | vllm=%s",

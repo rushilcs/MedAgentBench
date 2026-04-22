@@ -83,6 +83,232 @@ def _fabricate_completion(
     return turns
 
 
+# --------------------------------------------------- plain-text rollout smoke
+
+
+def _run_plain_rollout_smoke() -> None:
+    """Pin the rollout_func -> reward contract using stubs (no real model load).
+
+    What this catches before pod spend:
+      * prompt_ids / completion_ids / logprobs length alignment
+      * env_mask zeroing env-injected tokens (1=model, 0=env)
+      * extras (rollout_correct, rollout_tool_log, ...) round-trip into
+        ``benchmark_aligned_reward`` via the ``rollout_*`` kwargs
+      * ``benchmark_aligned_reward`` returns a finite scalar both for the
+        passed/finished case and the non-finished case (no env object needed)
+    """
+    import json as _json
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    import torch
+
+    from rl_training.env.fhir_snapshot import (
+        FhirSnapshot, SnapshotEntry, _canonicalize_url,
+    )
+    from rl_training.env.medagent_env import MedAgentEnv
+    from rl_training.rl import medagent_reward as mr
+    from rl_training.rl.medagent_plain_rollout import (
+        _build_task_lookup, make_medagent_plain_rollout,
+    )
+    from rl_training.rl.trl_benchmark_reward import benchmark_aligned_reward
+
+    # ---- minimal stub tokenizer (avoids downloading a 30MB Qwen tokenizer)
+    class StubTokenizer:
+        def __init__(self):
+            self.pad_token = "<pad>"
+            self.pad_token_id = 0
+            self.eos_token = "<eos>"
+            self.eos_token_id = 1
+            self._vocab: dict[str, int] = {"<pad>": 0, "<eos>": 1}
+
+        def _tok_id(self, s: str) -> int:
+            if s not in self._vocab:
+                self._vocab[s] = len(self._vocab)
+            return self._vocab[s]
+
+        def _encode(self, text: str) -> list[int]:
+            # Simple whitespace tokenization is fine for the contract test;
+            # alignment between completion_ids/logprobs/env_mask is the only
+            # invariant we care about.
+            return [self._tok_id(tok) for tok in text.split() if tok]
+
+        def __call__(self, text, add_special_tokens=False):
+            return SimpleNamespace(input_ids=self._encode(text))
+
+        def apply_chat_template(self, messages, add_generation_prompt=True,
+                                tokenize=False, **_):
+            parts: list[str] = []
+            for m in messages:
+                parts.append(
+                    f"<|im_start|>{m['role']} {m['content']} <|im_end|>"
+                )
+            if add_generation_prompt:
+                parts.append("<|im_start|>assistant")
+            return " ".join(parts)
+
+        def decode(self, ids, skip_special_tokens=True):
+            inv = {i: t for t, i in self._vocab.items()}
+            return " ".join(inv.get(i, "") for i in ids)
+
+        def convert_tokens_to_ids(self, tok):
+            return self._vocab.get(tok, -1)
+
+    tok = StubTokenizer()
+
+    # ---- canned-completion stub model: emits "GET ..." then "FINISH(...)"
+    class StubModel:
+        def __init__(self, completions: list[str]):
+            self._queue = list(completions)
+
+        def eval(self):
+            return self
+
+        def train(self):
+            return self
+
+        def generate(self, input_ids, attention_mask, max_new_tokens=128, **_):
+            text = self._queue.pop(0)
+            new_ids = torch.tensor(tok._encode(text), dtype=torch.long)
+            seq = torch.cat([input_ids[0], new_ids]).unsqueeze(0)
+            scores = []
+            for tid in new_ids.tolist():
+                v = torch.full((1, max(2, tid + 1)), -10.0)
+                v[0, tid] = 0.0  # logprob ~0 for the chosen token
+                scores.append(v)
+            return SimpleNamespace(sequences=seq, scores=tuple(scores))
+
+    # ---- task: a refsol-easy task1 lookup (FINISH(["mrn"]) passes refsol)
+    task = {
+        "id": "task1_smoke",
+        "context": "ctx",
+        "instruction": "Look up the MRN for patient JOHN",
+        "eval_MRN": "MRN-XYZ-1",
+        "sol": ["MRN-XYZ-1"],
+    }
+
+    # Snapshot pre-seeded with the GET the model "emits" so the env's GET
+    # comes back with success=True and we exercise the happy-path tool_log.
+    snap = FhirSnapshot(mode="replay", fallthrough=False)
+    get_url = "http://fake/Patient?identifier=JOHN&_format=json"
+    key = _canonicalize_url(get_url)
+    snap._cache[key] = SnapshotEntry(  # noqa: SLF001
+        url=key, status_code=200,
+        data=_json.dumps({"entry": [{"resource": {"id": "MRN-XYZ-1"}}]}),
+    )
+
+    # Patch utils.send_get_request -> snapshot for env.step's GET.
+    import src.server.tasks.medagentbench.utils as _mb_utils
+    orig = _mb_utils.send_get_request
+    _mb_utils.send_get_request = snap.send_get_request
+    import rl_training.env.medagent_env as _med_env_mod
+    _med_env_mod.send_get_request = snap.send_get_request
+
+    try:
+        # Build a 1-row dataset (mimic prepare_dataset shape).
+        from rl_training.data.prepare_dataset import task_to_prompt
+        prompt = task_to_prompt(task, fhir_api_base="http://fake/")
+        dataset_rows = [{
+            "prompt": prompt,
+            "task_id": task["id"],
+            "eval_MRN": task["eval_MRN"],
+            "instruction": task["instruction"],
+            "context": task["context"],
+            "ref_task_json": _json.dumps(task),
+        }]
+
+        # Build the prompt-hash lookup.
+        class _Iter:
+            def __iter__(self_inner):
+                return iter(dataset_rows)
+        lookup = _build_task_lookup(_Iter())
+        _assert(len(lookup) == 1, f"task lookup size: {len(lookup)}")
+
+        env_factory = lambda: MedAgentEnv(  # noqa: E731
+            fhir_api_base="http://fake/", funcs=[], max_rounds=4,
+        )
+
+        # Stub model emits a GET first, then FINISH. The two completions feed
+        # the two-turn rollout.
+        model = StubModel([
+            "GET http://fake/Patient?identifier=JOHN <eos>",
+            'FINISH(["MRN-XYZ-1"]) <eos>',
+        ])
+        trainer = SimpleNamespace(
+            model=model,
+            accelerator=SimpleNamespace(
+                device=torch.device("cpu"),
+                unwrap_model=lambda m: m,
+            ),
+        )
+
+        rollout_func = make_medagent_plain_rollout(
+            tokenizer=tok,
+            env_factory=env_factory,
+            max_rounds=4,
+            max_completion_length=512,
+            temperature=0.0,
+            top_p=1.0,
+            task_lookup=lookup,
+            fhir_api_base="http://fake/",
+        )
+
+        out = rollout_func([prompt], trainer)
+
+        # Required keys + alignment.
+        for k in ("prompt_ids", "completion_ids", "logprobs", "env_mask"):
+            _assert(k in out, f"rollout_func missing key {k!r}")
+            _assert(len(out[k]) == 1, f"{k}: expected 1 row, got {len(out[k])}")
+        cids = out["completion_ids"][0]
+        lps = out["logprobs"][0]
+        mask = out["env_mask"][0]
+        _assert(
+            len(cids) == len(lps) == len(mask),
+            f"alignment failure: cids={len(cids)} lps={len(lps)} mask={len(mask)}",
+        )
+        _assert(any(m == 1 for m in mask), "no model-generated tokens (mask all 0)")
+        _assert(any(m == 0 for m in mask), "no env-injected tokens (mask all 1)")
+        # Env-injected tokens carry logprob=0 by construction.
+        for lp, m in zip(lps, mask):
+            if m == 0:
+                _assert(lp == 0.0, f"env token had non-zero logprob {lp}")
+
+        # Extras round-trip.
+        _assert(out["rollout_correct"][0] is True, "task1 happy-path not graded correct")
+        _assert(out["rollout_finish_result"][0] is not None, "finish_result missing")
+        _assert(len(out["rollout_tool_log"][0]) >= 1, "tool_log empty")
+        _assert(out["rollout_task_id"][0] == "task1_smoke", "task_id round-trip failed")
+
+        # Reward path returns a finite scalar via the extras path.
+        rewards = benchmark_aligned_reward(
+            completions=[[]],
+            **{k: v for k, v in out.items()
+               if k not in ("prompt_ids", "completion_ids", "logprobs", "env_mask")},
+        )
+        _assert(len(rewards) == 1, f"reward shape: {rewards}")
+        import math
+        _assert(math.isfinite(rewards[0]), f"reward not finite: {rewards[0]}")
+        # passed -> r_succ (10.0) plus efficiency bonus, both > 0
+        _assert(rewards[0] > 5.0, f"happy-path reward too low: {rewards[0]}")
+
+        # Same reward path with correct=False, finish=None must also return
+        # a finite scalar (covers the failure-branch shaping logic).
+        bad_kwargs = {
+            "rollout_tool_log": [[]],
+            "rollout_finish_result": [None],
+            "rollout_correct": [False],
+            "rollout_ref_task_json": [_json.dumps(task)],
+            "rollout_fhir_api_base": ["http://fake/"],
+        }
+        rewards_bad = benchmark_aligned_reward(completions=[[]], **bad_kwargs)
+        _assert(
+            len(rewards_bad) == 1 and math.isfinite(rewards_bad[0]),
+            f"failure-branch reward not finite: {rewards_bad}",
+        )
+    finally:
+        _mb_utils.send_get_request = orig
+
+
 # ------------------------------------------------------------------- unit mode
 
 
@@ -588,9 +814,21 @@ def run_unit_tests() -> int:
 
     _run("smoke_grpo_pipeline", test_grpo_pipeline_smoke)
 
+    # 13. Plain-text rollout_func smoke (catches logprob/mask alignment + the
+    # extras-path of benchmark_aligned_reward before any pod spend).
+    def test_plain_rollout_smoke():
+        try:
+            import torch  # noqa: F401
+        except ModuleNotFoundError:
+            logger.warning("SKIP plain_rollout_smoke (torch not installed)")
+            return
+        _run_plain_rollout_smoke()
+
+    _run("plain_rollout.smoke", test_plain_rollout_smoke)
+
     elapsed = time.time() - start
     if failures:
-        logger.error("FAILED %d/%d tests in %.2fs", len(failures), 12, elapsed)
+        logger.error("FAILED %d/%d tests in %.2fs", len(failures), 13, elapsed)
         for f in failures:
             logger.error("  - %s", f)
         return 1

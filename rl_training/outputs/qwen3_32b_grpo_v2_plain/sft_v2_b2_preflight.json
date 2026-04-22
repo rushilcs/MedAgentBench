@@ -1,0 +1,13 @@
+{
+  "captured_at": "2026-04-22T14:15:00Z",
+  "purpose": "Preflight snapshot of preserved SFT v2 artifacts in B2 before plain-text GRPO run. Re-list and diff after the run to confirm no SFT v2 deletion or overwrite occurred.",
+  "bucket": "medagentbench-checkpoint",
+  "preserved_prefixes": {
+    "qwen3_32b_run3/qwen3_32b_sft_v2": {"files": 0, "size_gb": 0.0, "note": "Empty prefix (older naming; nothing here)"},
+    "qwen3_32b_run3/artifacts/sft_v2_merged": {"files": 25, "size_gb": 65.54, "note": "SFT v2 merged weights — must remain untouched"},
+    "qwen3_32b_run3/grpo_v2_ckpts": {"files": 2, "size_gb": 0.0, "note": "Old JSON-tool GRPO progress logs (no checkpoints) — preserved"}
+  },
+  "new_run_prefix": "qwen3_32b_run3/grpo_v2_plain_ckpts",
+  "new_run_collision": false,
+  "deploy_guard": "rl_training/scripts/deploy_grpo_sftv2_runpod.py:_assert_preserves_sft_v2 refuses to launch if --b2-prefix collides with the preserved prefixes above; the on-pod bootstrap re-checks $B2_PREFIX with the same guard."
+}

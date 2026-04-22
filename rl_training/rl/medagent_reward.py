@@ -213,22 +213,75 @@ def compute_episode_reward(
     fhir_api_base: str,
 ) -> tuple[float, dict[str, Any]]:
     """Scalar reward + structured trace for logging / debugging."""
-    beta = float(_RUNTIME["r_step"])
-    trace: dict[str, Any] = {
-        "terms": {},
-        "refsol_pass": False,
-        "first_action_invalid": False,
-    }
     case_data = getattr(env, "_task", {}) or {}
     tool_log = list(getattr(env, "_tool_log", []) or [])
     finished = bool(getattr(env, "_finished", False))
     finish_env = getattr(env, "_finish_result", None)
     finish_c = _extract_finish_result(completion)
     finish_result = finish_env if finish_env is not None else finish_c
-
-    passed = refsol_pass(
-        case_data, completion, fhir_api_base, finish_result, trace=trace,
+    return _score_from_extracted(
+        case_data=case_data,
+        tool_log=tool_log,
+        finished=finished,
+        finish_result=finish_result,
+        completion=completion,
+        fhir_api_base=fhir_api_base,
+        precomputed_pass=None,
     )
+
+
+def compute_episode_reward_from_extras(
+    *,
+    case_data: dict[str, Any],
+    tool_log: list[dict[str, Any]],
+    finished: bool,
+    finish_result: str | None,
+    correct: bool,
+    fhir_api_base: str,
+) -> tuple[float, dict[str, Any]]:
+    """Score a plain-text rollout from the extras emitted by ``rollout_func``.
+
+    Mirrors :func:`compute_episode_reward` but takes the env-derived fields
+    directly (no environment object) and trusts the caller's ``correct`` flag
+    rather than re-invoking refsol. Used by the ``rollout_func`` path for
+    plain-text MedAgent GRPO; the JSON-tool environment_factory path keeps
+    using ``compute_episode_reward``.
+    """
+    return _score_from_extracted(
+        case_data=case_data,
+        tool_log=tool_log,
+        finished=finished,
+        finish_result=finish_result,
+        completion=None,
+        fhir_api_base=fhir_api_base,
+        precomputed_pass=bool(correct),
+    )
+
+
+def _score_from_extracted(
+    *,
+    case_data: dict[str, Any],
+    tool_log: list[dict[str, Any]],
+    finished: bool,
+    finish_result: str | None,
+    completion: list[dict] | None,
+    fhir_api_base: str,
+    precomputed_pass: bool | None,
+) -> tuple[float, dict[str, Any]]:
+    beta = float(_RUNTIME["r_step"])
+    trace: dict[str, Any] = {
+        "terms": {},
+        "refsol_pass": False,
+        "first_action_invalid": False,
+    }
+
+    if precomputed_pass is not None:
+        passed = bool(precomputed_pass)
+        trace["refsol_pass_source"] = "precomputed"
+    else:
+        passed = refsol_pass(
+            case_data, completion or [], fhir_api_base, finish_result, trace=trace,
+        )
     trace["refsol_pass"] = passed
     max_rounds = int(_RUNTIME.get("max_rounds", 8))
     if passed:
@@ -245,7 +298,23 @@ def compute_episode_reward(
 
     R = 0.0
     step_cost_total = 0.0
-    first = first_assistant_text(completion)
+    if completion is not None:
+        first = first_assistant_text(completion)
+    elif tool_log:
+        # Plain-text rollout: synthesize the first-action text from the first
+        # tool_log entry so the first_invalid penalty still has a signal.
+        e0 = tool_log[0]
+        act0 = e0.get("action", "")
+        if act0 == "GET":
+            first = f"GET {e0.get('url', '')}"
+        elif act0 == "POST":
+            first = f"POST {e0.get('url', '')}\n{e0.get('payload') or ''}"
+        elif act0 == "FINISH":
+            first = f"FINISH({e0.get('answers', '')})"
+        else:
+            first = None
+    else:
+        first = None
     reward_trace: list[dict[str, Any]] = []
 
     def _rt(name: str, value: float, weight: float = 1.0) -> None:

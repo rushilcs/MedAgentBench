@@ -42,7 +42,11 @@ def _load_runpod():
 
 
 def _pod_env(secrets: dict) -> dict[str, str]:
-    skip = {"PUBLIC_KEY", "JUPYTER_PASSWORD"}
+    # PUBLIC_KEY MUST be passed: the runpod/pytorch image installs it into
+    # /root/.ssh/authorized_keys at boot. Without it, both direct SSH and the
+    # ssh.runpod.io proxy reject with "Permission denied (publickey)" and
+    # the agent can only drive the pod via the RunPod Web Terminal.
+    skip = {"JUPYTER_PASSWORD"}
     return {k: str(v) for k, v in secrets.items() if v and k not in skip}
 
 
@@ -90,8 +94,42 @@ def _ssh_line(rp, pod_id: str) -> str | None:
     return out.stdout.strip() or None
 
 
-def _bootstrap_block() -> str:
-    return r"""# Paste into RunPod Web Terminal (Connect → Terminal), repo root will be created.
+_SFT_V2_GUARD_PREFIXES = (
+    "qwen3_32b_run3/qwen3_32b_sft_v2",
+    "qwen3_32b_run3/artifacts/sft_v2_merged",
+    "qwen3_32b_run3/grpo_v2_ckpts",  # JSON-tool GRPO ckpts also preserved
+)
+
+
+def _assert_preserves_sft_v2(config_path: str, b2_prefix: str) -> None:
+    """Refuse to launch if the run could overwrite preserved SFT v2 artifacts.
+
+    The plain-text GRPO run must use a brand-new B2 prefix
+    (``qwen3_32b_run3/grpo_v2_plain_ckpts``); both the SFT v2 merged weights
+    (read-only source) and the prior JSON-tool GRPO ckpts must stay
+    untouched in B2 across this experiment so we can always roll back to
+    the validated 75% baseline.
+    """
+    for guard in _SFT_V2_GUARD_PREFIXES:
+        if b2_prefix == guard or b2_prefix.startswith(guard + "/"):
+            raise SystemExit(
+                f"REFUSING TO DEPLOY: B2_PREFIX={b2_prefix!r} would collide "
+                f"with preserved prefix {guard!r}. Pick a fresh prefix "
+                "(e.g. qwen3_32b_run3/grpo_v2_plain_ckpts) so the SFT v2 "
+                "weights and JSON-tool GRPO ckpts stay intact in B2."
+            )
+    cfg = Path(config_path)
+    if cfg.is_file():
+        text = cfg.read_text()
+        if "rm -rf" in text or "b2 rm" in text or "delete_file_version" in text:
+            raise SystemExit(
+                f"REFUSING TO DEPLOY: config {config_path!r} contains a "
+                "delete operation. Plain-text GRPO must be download/write-only."
+            )
+
+
+def _bootstrap_block(config: str, b2_prefix: str) -> str:
+    return rf"""# Paste into RunPod Web Terminal (Connect → Terminal), repo root will be created.
 
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
@@ -105,17 +143,27 @@ fi
 cd /workspace/MedAgentBench
 git pull --ff-only || true
 
-export PYTHONPATH="/workspace/MedAgentBench:${PYTHONPATH:-}"
+export PYTHONPATH="/workspace/MedAgentBench:${{PYTHONPATH:-}}"
 export STAGE=grpo
 export SKIP_FLASH_ATTN=1
-export CONFIG="${CONFIG:-rl_training/configs/qwen3_32b_grpo_post_sft_v2.yaml}"
-export TRAINING_TASKS="${TRAINING_TASKS:-rl_training/data/training_tasks_v2.json}"
-export OUTPUT_DIR="${OUTPUT_DIR:-rl_training/outputs/qwen3_32b_grpo_v2}"
-export B2_PREFIX="${B2_PREFIX:-qwen3_32b_run3/grpo_v2_ckpts}"
-export B2_PREFIX_MERGED="${B2_PREFIX_MERGED:-qwen3_32b_run3/artifacts/sft_v2_merged}"
-export MERGED_MODEL_DIR="${MERGED_MODEL_DIR:-/qwen3_32b_sft_v2_merged}"
-export FHIR_SNAPSHOT_LOCAL="${FHIR_SNAPSHOT_LOCAL:-rl_training/outputs/fhir_snapshot.jsonl}"
-export GRPO_TORCHRUN_PROCS="${GRPO_TORCHRUN_PROCS:-2}"
+# Plain-text GRPO: rollout_func runs MedAgentEnv (GET/POST/FINISH text actions)
+# so the run is directly comparable to the MedAgentBench paper / SFT v2 75% eval.
+export CONFIG="${{CONFIG:-{config}}}"
+export TRAINING_TASKS="${{TRAINING_TASKS:-rl_training/data/training_tasks_v2.json}}"
+export OUTPUT_DIR="${{OUTPUT_DIR:-rl_training/outputs/qwen3_32b_grpo_v2_plain}}"
+# NEW prefix; SFT v2 merged + JSON-tool GRPO ckpts under qwen3_32b_run3/* are NOT touched.
+export B2_PREFIX="${{B2_PREFIX:-{b2_prefix}}}"
+export B2_PREFIX_MERGED="${{B2_PREFIX_MERGED:-qwen3_32b_run3/artifacts/sft_v2_merged}}"
+export MERGED_MODEL_DIR="${{MERGED_MODEL_DIR:-/qwen3_32b_sft_v2_merged}}"
+export FHIR_SNAPSHOT_LOCAL="${{FHIR_SNAPSHOT_LOCAL:-rl_training/outputs/fhir_snapshot.jsonl}}"
+export GRPO_TORCHRUN_PROCS="${{GRPO_TORCHRUN_PROCS:-2}}"
+
+# Belt-and-suspenders SFT v2 preservation guard on the pod side.
+case "$B2_PREFIX" in
+  qwen3_32b_run3/qwen3_32b_sft_v2*|qwen3_32b_run3/artifacts/sft_v2_merged*|qwen3_32b_run3/grpo_v2_ckpts*)
+    echo "REFUSING TO LAUNCH: B2_PREFIX=$B2_PREFIX would overwrite preserved SFT v2 artifacts." >&2
+    exit 2 ;;
+esac
 
 # Env vars (B2_*, HF_TOKEN, RUNPOD_*) should already exist on the pod from RunPod UI.
 # If not, re-add them in the RunPod console, stop pod, start pod, or export here.
@@ -226,7 +274,19 @@ def main() -> None:
         help="JSON file with HF_TOKEN, B2_*, RUNPOD_API_KEY, ...",
     )
     ap.add_argument("--timeout", type=int, default=900)
+    ap.add_argument(
+        "--config",
+        default="rl_training/configs/qwen3_32b_grpo_post_sft_v2_plain.yaml",
+        help="Trainer config to bake into the bootstrap block.",
+    )
+    ap.add_argument(
+        "--b2-prefix",
+        default="qwen3_32b_run3/grpo_v2_plain_ckpts",
+        help="B2 destination prefix for ckpt sync (must NOT collide with SFT v2 prefixes).",
+    )
     args = ap.parse_args()
+
+    _assert_preserves_sft_v2(args.config, args.b2_prefix)
 
     env_path = Path(args.env_file)
     if not env_path.is_file():
@@ -262,7 +322,8 @@ def main() -> None:
         "pod_id": pod_id,
         "console_url": console,
         "ssh_command": ssh,
-        "config": "rl_training/configs/qwen3_32b_grpo_post_sft_v2.yaml",
+        "config": args.config,
+        "b2_prefix": args.b2_prefix,
         "note": (
             "If plain SSH fails from your laptop, open the Web Terminal from the "
             "console URL and run the bootstrap block."
@@ -271,7 +332,7 @@ def main() -> None:
     _SUMMARY.parent.mkdir(parents=True, exist_ok=True)
     _SUMMARY.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, indent=2), flush=True)
-    boot = _bootstrap_block()
+    boot = _bootstrap_block(args.config, args.b2_prefix)
     print("\n--- Web terminal bootstrap (also in repo .agent_run/remote_bootstrap_grpo.sh) ---\n")
     print(boot)
     _write_quickstart(
