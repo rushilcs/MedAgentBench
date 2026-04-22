@@ -4,12 +4,24 @@ set -euo pipefail
 exec > >(tee -a /tmp/remote_bootstrap_grpo.log) 2>&1
 log() { echo "[$(date -u +%H:%M:%SZ)] $*"; }
 
-set -a
-source /etc/rp_environment 2>/dev/null || true
+# Only set vars that aren't already exported by the caller. Stale RunPod
+# template envs (e.g. v1 B2_PREFIX_MERGED) must NOT override what the
+# kick script just exported, otherwise GRPO trains the wrong checkpoint.
+_set_if_unset() {
+  local key="${1%%=*}" val="${1#*=}"
+  if [[ -z "${!key:-}" ]]; then export "$key=$val"; fi
+}
+if [[ -r /etc/rp_environment ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    _set_if_unset "$line"
+  done < /etc/rp_environment
+fi
 while IFS= read -r -d '' line || [[ -n "${line:-}" ]]; do
-  case "$line" in B2_*|HF_TOKEN=*|RUNPOD_*|OPENAI_API_KEY=*) export "$line" ;; esac
+  case "$line" in
+    B2_*|HF_TOKEN=*|RUNPOD_*|OPENAI_API_KEY=*) _set_if_unset "$line" ;;
+  esac
 done < /proc/1/environ
-set +a
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq >/dev/null && apt-get install -y -qq git tmux curl ca-certificates jq rsync >/dev/null || true
