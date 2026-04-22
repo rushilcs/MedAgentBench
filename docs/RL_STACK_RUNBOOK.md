@@ -44,6 +44,17 @@ within 15 min (wasted cost: ~$1).
 # From the repo root on your laptop:
 python rl_training/scripts/smoke_test_local.py --mode unit
 # <30 s, no network, no GPU. Must pass.
+# This now includes the GRPO snapshot+reward end-to-end smoke
+# (smoke_grpo_pipeline.py) which was added after the 2026-04-21
+# wasted run where snapshot misses + simulated POSTs produced 0%
+# success and the dashboards never noticed.
+
+# Stronger gate (recommended before any GRPO deploy): run the same
+# harness against the local FHIR docker so we catch URL drift between
+# the snapshot recorder and refsol's expected URLs:
+#   docker run -d --name medagentbench-fhir -p 8080:8080 medagentbench
+#   curl -sf http://localhost:8080/fhir/metadata >/dev/null && echo OK
+#   python rl_training/scripts/smoke_grpo_pipeline.py --live
 
 # Optional but recommended:
 python rl_training/scripts/smoke_test_local.py --mode small \
@@ -51,7 +62,11 @@ python rl_training/scripts/smoke_test_local.py --mode small \
 # ~5-10 min on MPS/CPU. Validates the full TRL GRPO loop.
 ```
 
-If `--mode unit` fails, do **not** rent a GPU. Fix locally first.
+If `--mode unit` fails (including the new `smoke_grpo_pipeline` step),
+do **not** rent a GPU. The most common cause is the snapshot at
+`rl_training/outputs/fhir_snapshot.jsonl` missing URLs that
+`refsol.taskN` issues — rebuild it (see §5 / `build_fhir_snapshot.py`)
+against a local docker FHIR before deploying.
 
 ---
 

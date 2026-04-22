@@ -94,9 +94,15 @@ def build_rollout_record(
     else:
         term_status = "truncated"
 
+    step_debug_list = list(trace.get("step_debug") or [])
+    step_debug_by_step: dict[Any, dict[str, Any]] = {}
+    for sd in step_debug_list:
+        if "step" in sd:
+            step_debug_by_step[sd["step"]] = sd
+
     steps: list[dict[str, Any]] = []
     seen_get_digests: set[tuple[str, int]] = set()
-    for entry in tool_log:
+    for idx, entry in enumerate(tool_log):
         norm = _tool_entry_to_normalized(entry)
         syn = verify_syntax(norm) if norm else verify_syntax("")
         act = entry.get("action", "")
@@ -140,7 +146,10 @@ def build_rollout_record(
                     "novel_url": novel,
                     "violates_task_constraints": False,
                 },
-                "reward_debug": {},
+                "reward_debug": (
+                    step_debug_by_step.get(entry.get("step"))
+                    or (step_debug_list[idx] if idx < len(step_debug_list) else {})
+                ),
             },
         )
 

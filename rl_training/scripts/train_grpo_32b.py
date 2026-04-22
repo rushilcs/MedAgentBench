@@ -213,7 +213,15 @@ def main() -> None:
         # ``run_post_train_eval.py`` so terminal reward matches benchmark task
         # grading without requiring a live Docker FHIR on localhost:8080.
         def _patched_send_get(url, params=None, headers=None):  # noqa: ARG001
-            return snap.send_get_request(url)
+            # refsol does ``json.loads(send_get_request(...)['data'])`` because
+            # the original utils returns text for FHIR's application/fhir+json.
+            # Snapshot stores ``data`` parsed (dict); re-serialize so refsol's
+            # json.loads works unmodified. Without this every refsol GET path
+            # raised TypeError → silent grader failure → r_succ never fired.
+            res = snap.send_get_request(url)
+            if "data" in res and not isinstance(res["data"], str):
+                res = {**res, "data": json.dumps(res["data"])}
+            return res
 
         import src.server.tasks.medagentbench.utils as _mb_utils
 

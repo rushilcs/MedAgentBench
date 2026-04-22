@@ -15,11 +15,17 @@ class SyntaxResult:
     error_class: str | None
 
 
-def verify_syntax(raw_text: str) -> SyntaxResult:
-    """Return legality and coarse error class for one agent turn."""
+def verify_syntax(raw_text: str, strict: bool = False) -> SyntaxResult:
+    """Return legality and coarse error class for one agent turn.
+
+    ``strict`` (off by default for backward compatibility) requires the
+    parser to find the action at the first non-thinking line — no leading
+    garbage. Used by the reward path to penalize "bury text + one anchor"
+    parsing hacks; the env stays lenient so good policies aren't held back.
+    """
     if not raw_text or not str(raw_text).strip():
         return SyntaxResult(False, "invalid", "EMPTY")
-    p = parse_action(str(raw_text))
+    p = parse_action(str(raw_text), strict=strict)
     if p.kind == "invalid":
         return SyntaxResult(False, "invalid", "INVALID_SYNTAX")
     if p.kind == "post" and p.payload is None:

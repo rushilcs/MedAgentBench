@@ -31,18 +31,25 @@ _RUNTIME: dict[str, Any] = {
     "r_step": -0.03,
     "r_premature_post": -0.8,
     "r_first_invalid": -3.0,
+    # Penalty for rollouts that ran out of turns without ever calling FINISH.
+    # Distinguishes "ran out of budget" from "answered wrong" so the optimizer
+    # can lean into the cheap fix (call FINISH earlier).
+    "r_truncated": -0.5,
     "efficiency_bonus_max": 0.4,
     "rollout_log_path": None,
     "rollout_log_fraction": 0.0,
     "canonicalize": True,
     "fsm_constrained_decode": False,
+    # Strict parse mode (used by reward path only, not the env). When true,
+    # the first non-thinking line of the assistant turn must *be* the action
+    # — no leading garbage. Kills the "bury text + one anchor" parse hack.
+    "strict_parse": False,
     # Plan §4: GET +0.05 only on novel digest; cap distinct canonical URLs.
-    "max_get_exec_bonus_distinct": 4,
+    # Default raised to max_rounds so query-heavy tasks (5+ reads) aren't
+    # discouraged after only 4 distinct GETs.
+    "max_get_exec_bonus_distinct": 8,
     # Small FINISH JSON-list parse bonus when refsol fails (anneal to 0 in YAML).
     "r_finish_canon": 0.0,
-    # Query coverage / action schema extras (default off; anneal mid-train).
-    "r_q_coverage": 0.0,
-    "r_payload_schema": 0.0,
     "rollout_log_sample_failures": True,
 }
 
@@ -165,6 +172,11 @@ def refsol_pass(
         if trace is not None:
             trace["refsol_exception"] = f"{type(exc).__name__}: {exc}"
         return False
+    finally:
+        if trace is not None:
+            errs = getattr(results, "extract_posts_errors", None)
+            if errs:
+                trace["extract_posts_errors"] = list(errs)
 
 
 def _finish_json_list_ok(s: str | None) -> bool:
@@ -178,11 +190,21 @@ def _finish_json_list_ok(s: str | None) -> bool:
 
 
 def _efficiency_bonus(num_tool_steps: int, max_rounds: int = 8) -> float:
+    """Bonus for finishing well under the round budget.
+
+    ``num_tool_steps`` must be the count of *interaction* steps (GET/POST)
+    only — FINISH and any no-op turns must be excluded by the caller, else
+    a lone FINISH with no real work would still earn a bonus.
+    """
     if num_tool_steps <= 0:
         return 0.0
     m = float(_RUNTIME.get("efficiency_bonus_max", 0.4))
     spare = max(0, max_rounds - num_tool_steps)
     return m * (spare / max_rounds)
+
+
+def _count_interaction_steps(tool_log: list[dict[str, Any]]) -> int:
+    return sum(1 for e in tool_log if e.get("action") in {"GET", "POST"})
 
 
 def compute_episode_reward(
@@ -208,8 +230,9 @@ def compute_episode_reward(
         case_data, completion, fhir_api_base, finish_result, trace=trace,
     )
     trace["refsol_pass"] = passed
+    max_rounds = int(_RUNTIME.get("max_rounds", 8))
     if passed:
-        bonus = _efficiency_bonus(len(tool_log))
+        bonus = _efficiency_bonus(_count_interaction_steps(tool_log), max_rounds)
         trace["terms"]["succ"] = float(_RUNTIME["r_succ"])
         trace["terms"]["efficiency_bonus"] = bonus
         total = float(_RUNTIME["r_succ"]) + bonus
@@ -236,7 +259,8 @@ def compute_episode_reward(
             if _RUNTIME.get("canonicalize", True)
             else (first or "").strip()
         )
-        syn0 = verify_syntax(text0)
+        strict = bool(_RUNTIME.get("strict_parse", False))
+        syn0 = verify_syntax(text0, strict=strict)
         if not syn0.legal:
             fv = float(_RUNTIME.get("r_first_invalid", -3.0))
             R += fv
@@ -262,19 +286,32 @@ def compute_episode_reward(
             return f"FINISH({entry.get('answers', '')})"
         return ""
 
-    seen_get_success = False
+    # ``seen_get_attempt`` clears premature_post on *any* GET attempt, even
+    # if the snapshot/live FHIR returns an error. The previous "successful
+    # GET only" rule meant cache-miss runs paid -0.8 on every POST and the
+    # policy could not distinguish "tried to read first" from "skipped reads
+    # entirely". (Plan §3 item 2.)
+    seen_get_attempt = False
+    strict_step = bool(_RUNTIME.get("strict_parse", False))
+    step_debug: list[dict[str, Any]] = []
     for entry in tool_log:
         act = entry.get("action", "")
         R += beta
         step_cost_total += beta
+        step_terms: dict[str, float] = {"step_cost": beta}
 
         norm = _norm_entry(entry)
-        syn_step = verify_syntax(norm) if norm.strip() else verify_syntax("")
+        syn_step = (
+            verify_syntax(norm, strict=strict_step)
+            if norm.strip() else verify_syntax("", strict=strict_step)
+        )
         leg = r_legal_pos if syn_step.legal else r_legal_neg
         R += leg
         _rt(f"legal_{act or 'unk'}", leg)
+        step_terms[f"legal_{act or 'unk'}"] = leg
 
         if act == "GET":
+            seen_get_attempt = True
             url = str(entry.get("url") or "")
             rl = int(entry.get("response_len", 0) or 0)
             ck = canonical_get_key(url)
@@ -289,19 +326,30 @@ def compute_episode_reward(
                 ):
                     R += r_exec
                     _rt("exec_get_novel", r_exec)
-                seen_get_success = True
+                    step_terms["exec_get_novel"] = r_exec
             else:
                 pen = r_legal_neg * 0.25
                 R += pen
                 _rt("get_fail_soft", pen)
+                step_terms["get_fail_soft"] = pen
         elif act == "POST":
-            if is_action_family(case_data.get("id", "")) and not seen_get_success:
+            if is_action_family(case_data.get("id", "")) and not seen_get_attempt:
                 pp = float(_RUNTIME["r_premature_post"])
                 R += pp
                 trace["terms"]["premature_post"] = trace.get("terms", {}).get(
                     "premature_post", 0.0,
                 ) + pp
                 _rt("premature_post", pp)
+                step_terms["premature_post"] = pp
+        step_debug.append({
+            "step": entry.get("step"),
+            "action": act,
+            "terms": step_terms,
+            "subtotal": sum(step_terms.values()),
+            "syntax_legal": syn_step.legal,
+            "syntax_error_class": syn_step.error_class,
+        })
+    trace["step_debug"] = step_debug
 
     trace["terms"]["step_cost"] = step_cost_total
     _rt("step_cost", step_cost_total)
@@ -323,6 +371,16 @@ def compute_episode_reward(
     if rred < 0:
         trace["terms"]["redundant_get"] = rred
         _rt("redundant_get", rred)
+
+    # Truncation penalty: rollout ended without a FINISH action. Lets the
+    # optimizer separate "ran out of turns" from "answered wrong". Only
+    # applies on the failure branch (refsol passed branch returned earlier).
+    if not finished:
+        rt = float(_RUNTIME.get("r_truncated", -0.5))
+        if rt != 0.0:
+            R += rt
+            trace["terms"]["truncated"] = rt
+            _rt("truncated", rt)
 
     trace["total"] = R
     trace["efficiency"] = eff

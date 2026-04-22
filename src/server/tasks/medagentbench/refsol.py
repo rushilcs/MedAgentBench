@@ -1,8 +1,19 @@
 import json
+import logging
 from .utils import *
 
+logger = logging.getLogger(__name__)
+
 def extract_posts(results):
+    """Extract accepted POST requests from a results history.
+
+    Surfaces parse errors via ``logger.warning`` (silent ``except`` used to
+    hide grader-side false negatives) and stashes them on the results object
+    as ``extract_posts_errors`` so the rollout logger can surface them to
+    the dashboard.
+    """
     posts = []
+    errors = []
     for idx, i in enumerate(results.history):
         if (i.role == 'agent') and ('POST' in i.content):
             if (idx<len(results.history)) and ("POST request accepted" in results.history[idx+1].content):
@@ -11,8 +22,15 @@ def extract_posts(results):
                     url = r.split('\n')[0][4:].strip()
                     payload = json.loads('\n'.join(r.split('\n')[1:]))
                     posts.append((url, payload))
-                except:
-                    pass
+                except Exception as exc:
+                    msg = f"extract_posts failed at idx={idx}: {type(exc).__name__}: {exc}"
+                    logger.warning(msg)
+                    errors.append(msg)
+    if errors:
+        try:
+            setattr(results, "extract_posts_errors", errors)
+        except Exception:
+            pass
     return posts
 
 def check_has_post(results):

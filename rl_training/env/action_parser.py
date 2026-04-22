@@ -52,18 +52,27 @@ def _strip_reasoning(text: str) -> str:
     return t.strip()
 
 
-def parse_action(text: str) -> ParsedAction:
+def parse_action(text: str, strict: bool = False) -> ParsedAction:
     """Parse a single agent response into a structured action.
 
     Robust to Qwen3-style <think>...</think> reasoning prefixes, markdown
     code fences (```), and channel/role tokens.
+
+    ``strict`` (default False) disables the "search for the first
+    GET/POST/FINISH anchor anywhere in the text" fallback. In strict mode,
+    the action must be at the first non-thinking line — burying garbage
+    before a single anchor returns ``invalid``. Used by the reward path
+    only; the live env stays lenient so well-formed-but-chatty completions
+    still execute.
     """
     t = _strip_reasoning(text)
     raw = t.replace("```tool_code", "").replace("```", "").strip()
 
     # If the anchor still isn't at the very start (e.g. a short lead-in remains),
-    # slice from the first anchor occurrence.
+    # slice from the first anchor occurrence — but only in lenient mode.
     if not (raw.startswith("GET") or raw.startswith("POST") or raw.startswith("FINISH(")):
+        if strict:
+            return ParsedAction(kind="invalid", raw=raw)
         anchor = _ACTION_ANCHOR_RE.search(raw)
         if anchor:
             raw = raw[anchor.start():].strip()

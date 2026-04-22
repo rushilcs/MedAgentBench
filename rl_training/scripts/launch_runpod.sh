@@ -113,15 +113,35 @@ PY
   log "2/9 pulling FHIR snapshot..."
   mkdir -p "$(dirname "$FHIR_SNAPSHOT_LOCAL")"
   if [[ -n "$B2_BUCKET" ]]; then
-    python - <<PY || log "FHIR snapshot download failed (continuing with empty cache)"
+    # Prefer the canonical artifact path uploaded by Phase 2 of the
+    # 2026-04-22 fix (single file, rebuilt against real FHIR with widened
+    # URL coverage). Fall back to the legacy per-run prefix for older pods.
+    SNAPSHOT_REMOTE="${B2_PREFIX_FHIR_SNAPSHOT:-qwen3_32b_run3/artifacts/fhir_snapshot.jsonl}"
+    export SNAPSHOT_REMOTE FHIR_SNAPSHOT_LOCAL
+    python - <<'PY' || log "FHIR snapshot download failed (continuing with empty cache)"
 import os, sys
+from pathlib import Path
 sys.path.insert(0, os.getcwd())
-from rl_training.training.checkpoint_sync import make_backend
-backend = make_backend("b2", os.environ["B2_BUCKET"])
-prefix = "${B2_PREFIX}/fhir_snapshot"
-local = "${FHIR_SNAPSHOT_LOCAL}"
-backend.download_directory(prefix, os.path.dirname(local))
+from b2sdk.v2 import InMemoryAccountInfo, B2Api
+info = InMemoryAccountInfo()
+api = B2Api(info)
+api.authorize_account(
+    "production",
+    os.environ["B2_APPLICATION_KEY_ID"],
+    os.environ["B2_APPLICATION_KEY"],
+)
+bucket = api.get_bucket_by_name(os.environ["B2_BUCKET"])
+remote = os.environ["SNAPSHOT_REMOTE"]
+local = os.environ["FHIR_SNAPSHOT_LOCAL"]
+Path(local).parent.mkdir(parents=True, exist_ok=True)
+dl = bucket.download_file_by_name(remote)
+with open(local, "wb") as f:
+    dl.save(f)
+print("snapshot ok", remote, "->", local, Path(local).stat().st_size, "bytes")
 PY
+  fi
+  if [[ -f "$FHIR_SNAPSHOT_LOCAL" ]]; then
+    log "2a/9 snapshot ready: $(wc -l <"$FHIR_SNAPSHOT_LOCAL") rows, $(du -h "$FHIR_SNAPSHOT_LOCAL" | cut -f1)"
   fi
 
   # Live FHIR for snapshot fallthrough + any code paths still hitting HTTP.
@@ -152,6 +172,32 @@ PY
     fi
   else
     log "2b/9 FHIR not reachable and docker unavailable; relying on snapshot + refsol HTTP patch"
+  fi
+
+  # Hard gate: when snapshot_fallthrough is true (snapshot misses → live HTTP)
+  # the trainer cannot survive without a reachable FHIR. Read the active
+  # config and refuse to start the trainer in that combination.
+  # Strict mode (snapshot_fallthrough: false, the new default) bypasses
+  # this gate because misses become bounded shaping penalties.
+  if [[ -n "${CONFIG:-}" && -f "$CONFIG" && "$STAGE" == "grpo" ]]; then
+    SNAPSHOT_FALLTHROUGH=$(python3 - <<PY
+import yaml,sys
+try:
+    cfg = yaml.safe_load(open("${CONFIG}"))
+    print("true" if (cfg.get("env") or {}).get("snapshot_fallthrough", True) else "false")
+except Exception:
+    print("true")
+PY
+)
+    if [[ "$SNAPSHOT_FALLTHROUGH" == "true" ]] \
+        && ! curl -sf -m 6 "$FHIR_HEALTH_URL" >/dev/null 2>&1 \
+        && [[ "${SKIP_FHIR_DOCKER:-0}" != "1" ]]; then
+      log "FATAL: snapshot_fallthrough=true and FHIR is unreachable at $FHIR_HEALTH_URL."
+      log "       Misses would trigger live HTTP and silently zero out reward."
+      log "       Either (a) ensure docker FHIR is up, or (b) set env.snapshot_fallthrough: false in $CONFIG"
+      log "       and re-verify snapshot coverage with rl_training/scripts/smoke_grpo_pipeline.py --snapshot-only."
+      exit 11
+    fi
   fi
 
   # Stage-specific: if we're running GRPO post-SFT and the merged dir

@@ -14,6 +14,20 @@ set +a
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq >/dev/null && apt-get install -y -qq git tmux curl ca-certificates jq rsync >/dev/null || true
 
+# Install docker.io (privileged-container path) so launch_runpod.sh can
+# bring up the MedAgentBench FHIR jar — the 2026-04-21 wasted run hit
+# "Connection refused" on every model GET because the runpod/pytorch
+# image ships without docker. We swallow failures: if docker can't be
+# installed/started in this container, the snapshot+strict mode keeps
+# training reward-correct (smoke gate enforces snapshot coverage).
+if ! command -v docker >/dev/null 2>&1; then
+  apt-get install -y -qq docker.io >/dev/null 2>&1 || true
+fi
+if command -v docker >/dev/null 2>&1; then
+  service docker start >/dev/null 2>&1 || dockerd >/tmp/dockerd.log 2>&1 &
+  sleep 3
+fi
+
 REPO="${REPO:-/workspace/MedAgentBench}"
 mkdir -p /workspace
 cd /workspace

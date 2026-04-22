@@ -47,12 +47,17 @@ _CODE_BY_TASK: dict[int, str] = {
 
 
 def _task_urls(task: dict[str, Any], fhir_api_base: str) -> list[str]:
-    """Return the list of FHIR GET URLs to prefetch for one task."""
+    """Return the list of FHIR GET URLs to prefetch for one task.
+
+    We deliberately enumerate every URL refsol.taskN actually issues plus
+    the URLs the model is most likely to issue. Coverage gaps here cause
+    snapshot misses at training time and silently zero out the reward
+    signal (see grpo_fhir_reward_fix plan).
+    """
     task_id = task["id"]
     mrn = task.get("eval_MRN", "")
     urls: list[str] = []
 
-    # Identify the task type from the id (works for both benchmark and train_ ids)
     task_type: int | None = None
     for part in task_id.split("_"):
         if part.startswith("task"):
@@ -65,14 +70,11 @@ def _task_urls(task: dict[str, Any], fhir_api_base: str) -> list[str]:
         return urls
 
     if task_type == 1:
-        # The model typically queries by name + DOB. We cache a wildcard Patient
-        # search so any follow-up agent query hits. task1 doesn't need the MRN
-        # (that's what the model has to find).
-        instruction = task.get("instruction", "")
-        # Best-effort: the instruction text contains "name X and DOB of Y"
-        # but we don't parse it here; the full Patient list is enough.
-        urls.append(f"{fhir_api_base}Patient?_count=500")
+        # task1 model needs a name+DOB lookup. We cache a wildcard list once
+        # below (added unconditionally), so nothing per-task here.
+        pass
     else:
+        # refsol.task2..task10 always issues this exact identifier query.
         urls.append(f"{fhir_api_base}Patient?identifier={mrn}")
 
     code = _CODE_BY_TASK.get(task_type)
@@ -82,6 +84,43 @@ def _task_urls(task: dict[str, Any], fhir_api_base: str) -> list[str]:
         )
 
     return urls
+
+
+def _widen_urls(urls: list[str], fhir_api_base: str) -> list[str]:
+    """Generate host- and format-variant URLs covering common model drift.
+
+    The recorder used to cache only the canonical localhost URL with no
+    ``_format`` flag. The model frequently issues:
+      - ``127.0.0.1`` instead of ``localhost``
+      - ``?_format=json`` (which env.get_fhir_resource auto-appends anyway,
+        so the canonical URL form differs from what the recorder stored)
+      - Different param ordering — ``FhirSnapshot._canonicalize_url`` already
+        sorts these so we don't need to enumerate.
+    """
+    base_host_variants: list[str] = []
+    if "localhost" in fhir_api_base:
+        base_host_variants.append(fhir_api_base.replace("localhost", "127.0.0.1"))
+    if "127.0.0.1" in fhir_api_base:
+        base_host_variants.append(fhir_api_base.replace("127.0.0.1", "localhost"))
+
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def _push(u: str) -> None:
+        if u not in seen:
+            seen.add(u)
+            out.append(u)
+
+    for url in urls:
+        _push(url)
+        if "?" in url:
+            _push(url + "&_format=json")
+        else:
+            _push(url + "?_format=json")
+        for alt_base in base_host_variants:
+            alt = url.replace(fhir_api_base, alt_base)
+            _push(alt)
+    return out
 
 
 def main() -> None:
@@ -110,9 +149,16 @@ def main() -> None:
 
     total_urls = 0
     unique_before = len(snapshot._cache)  # noqa: SLF001 (internal is fine, same package)
+
+    # One-shot wildcard Patient list for task1 (and any other lookup that
+    # needs a full scan); recorded with widened host/format variants too.
+    wildcard = [f"{args.fhir_base}Patient?_count=500"]
+    for url in _widen_urls(wildcard, args.fhir_base):
+        snapshot.send_get_request(url)
+        total_urls += 1
+
     for task in tasks:
-        urls = _task_urls(task, args.fhir_base)
-        for url in urls:
+        for url in _widen_urls(_task_urls(task, args.fhir_base), args.fhir_base):
             snapshot.send_get_request(url)
             total_urls += 1
 

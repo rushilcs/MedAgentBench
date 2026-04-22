@@ -182,6 +182,17 @@ class MedAgentBenchEnv:
         Use this to create observations (vitals), medication requests,
         or service requests (lab orders, referrals).
 
+        Verification:
+            By default the POST is *simulated* (no live HTTP) and graded
+            later by ``refsol.taskN``. We additionally validate structural
+            shape here so obvious shape errors (missing ``resourceType``,
+            wrong type, wrong category for the URL) flip ``success=False``
+            immediately and feed the existing penalty path. This stops the
+            policy from "winning" a POST step purely by emitting any JSON
+            blob. Set ``MEDAGENT_LIVE_POST=1`` and supply a reachable
+            FHIR base to additionally POST and read back; off by default
+            for snapshot-mode determinism.
+
         Args:
             url: The FHIR endpoint URL, e.g. ``{fhir_base}Observation``
             payload: A JSON string containing the FHIR resource to create.
@@ -192,7 +203,7 @@ class MedAgentBenchEnv:
         self._step_count += 1
         self._post_count += 1
         try:
-            json.loads(payload) if isinstance(payload, str) else payload
+            parsed_payload = json.loads(payload) if isinstance(payload, str) else payload
         except (json.JSONDecodeError, TypeError):
             self._tool_log.append({
                 "step": self._step_count,
@@ -208,6 +219,52 @@ class MedAgentBenchEnv:
             })
             return "Error: Invalid JSON payload"
         payload_text = payload if isinstance(payload, str) else json.dumps(payload)
+
+        verify_err = _verify_post_payload(url, parsed_payload)
+        if verify_err is not None:
+            self._tool_log.append({
+                "step": self._step_count,
+                "action": "POST",
+                "url": url,
+                "success": False,
+                "timestamps": [],
+                "response_len": len(payload_text),
+                "payload": payload_text,
+                "error": f"verify: {verify_err}",
+            })
+            self._history.append({
+                "role": "tool", "action": "POST", "url": url, "success": False,
+            })
+            return f"Error: POST payload failed validation ({verify_err})"
+
+        if os.environ.get("MEDAGENT_LIVE_POST") == "1":
+            try:
+                resp = requests.post(url, data=payload_text,
+                                     headers={"Content-Type": "application/fhir+json"},
+                                     timeout=30)
+                if resp.status_code >= 400:
+                    self._tool_log.append({
+                        "step": self._step_count, "action": "POST", "url": url,
+                        "success": False, "timestamps": [],
+                        "response_len": len(payload_text), "payload": payload_text,
+                        "error": f"live POST {resp.status_code}",
+                    })
+                    self._history.append({
+                        "role": "tool", "action": "POST", "url": url, "success": False,
+                    })
+                    return f"Error: live POST returned {resp.status_code}"
+            except Exception as exc:
+                self._tool_log.append({
+                    "step": self._step_count, "action": "POST", "url": url,
+                    "success": False, "timestamps": [],
+                    "response_len": len(payload_text), "payload": payload_text,
+                    "error": f"live POST: {exc}",
+                })
+                self._history.append({
+                    "role": "tool", "action": "POST", "url": url, "success": False,
+                })
+                return f"Error: live POST failed ({exc})"
+
         self._tool_log.append({
             "step": self._step_count,
             "action": "POST",
@@ -246,6 +303,37 @@ class MedAgentBenchEnv:
             "answers": answers,
         })
         return f"Task finished with answers: {answers}"
+
+
+# Resource-type expected per URL endpoint suffix. Mirrors what
+# refsol.task3/5/8/9/10 enforce, so structurally-wrong POSTs (e.g. dumping
+# an Observation at /MedicationRequest) get caught at env time rather than
+# silently winning the step and only failing terminal grading.
+_URL_TO_RESOURCE: dict[str, str] = {
+    "Observation": "Observation",
+    "MedicationRequest": "MedicationRequest",
+    "ServiceRequest": "ServiceRequest",
+}
+
+
+def _verify_post_payload(url: str, payload: Any) -> str | None:
+    """Lightweight schema check. Returns None if OK, else error string.
+
+    Keeps the bar low: any FHIR resource POSTed must be a dict with a
+    non-empty ``resourceType`` matching the URL endpoint. We deliberately
+    don't enforce per-task semantic checks here — that's refsol's job and
+    we don't want this hook to false-positive a borderline-correct payload.
+    """
+    if not isinstance(payload, dict):
+        return f"payload must be JSON object, got {type(payload).__name__}"
+    rt = payload.get("resourceType")
+    if not isinstance(rt, str) or not rt:
+        return "missing resourceType"
+    endpoint = url.rstrip("/").rsplit("/", 1)[-1].split("?", 1)[0]
+    expected = _URL_TO_RESOURCE.get(endpoint)
+    if expected is not None and rt != expected:
+        return f"resourceType {rt!r} != endpoint {expected!r}"
+    return None
 
 
 def _extract_timestamps(text: str) -> list[str]:

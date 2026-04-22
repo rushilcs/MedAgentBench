@@ -560,9 +560,37 @@ def run_unit_tests() -> int:
 
     _run("eval.clinical_metrics", test_clinical_metrics)
 
+    # 12. GRPO snapshot + reward end-to-end (the gate that catches the
+    # "0% success because snapshot misses + simulated POSTs" class of bug).
+    def test_grpo_pipeline_smoke():
+        snap_path = Path(_ROOT) / "rl_training/outputs/fhir_snapshot.jsonl"
+        tasks_path = Path(_ROOT) / "rl_training/data/training_tasks_v2.json"
+        if not snap_path.exists() or not tasks_path.exists():
+            logger.warning(
+                "SKIP smoke_grpo_pipeline (missing %s or %s)",
+                snap_path, tasks_path,
+            )
+            return
+        import subprocess
+        cmd = [
+            sys.executable,
+            str(Path(_ROOT) / "rl_training/scripts/smoke_grpo_pipeline.py"),
+            "--snapshot-only",
+            "--snapshot-path", str(snap_path),
+            "--tasks", str(tasks_path),
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if proc.returncode != 0:
+            tail = (proc.stdout + proc.stderr).strip().splitlines()[-12:]
+            raise SmokeTestFailure(
+                "smoke_grpo_pipeline failed:\n  " + "\n  ".join(tail),
+            )
+
+    _run("smoke_grpo_pipeline", test_grpo_pipeline_smoke)
+
     elapsed = time.time() - start
     if failures:
-        logger.error("FAILED %d/%d tests in %.2fs", len(failures), 11, elapsed)
+        logger.error("FAILED %d/%d tests in %.2fs", len(failures), 12, elapsed)
         for f in failures:
             logger.error("  - %s", f)
         return 1
