@@ -40,8 +40,12 @@ grpo:
   # (per_device * world_size * grad_accum) % num_generations == 0.
   num_generations: 4
   max_prompt_length: 4096
-  # Per-turn cap (query-heavy 512–768; hard ceiling 1024 in runbook).
-  max_completion_length: 768
+  # Per-turn cap. Qwen3-32B thinking mode (which SFT v2 inherited) routinely
+  # spends 800-1500 tokens inside <think> before emitting a tool call. The
+  # original 768 cap truncated *every* rollout mid-think, leaving 0-1 step
+  # rollouts and starving avg_correct -> 0. 2048 leaves headroom for the
+  # action itself and matches the per-turn ceiling SFT v2 was trained under.
+  max_completion_length: 2048
   learning_rate: 5.0e-6
   # KL anchor to SFT reference — increase (e.g. double) if p95 tokens rise without SR gain.
   beta: 0.08
