@@ -572,8 +572,12 @@ def main() -> None:
     if used_two_phase:
         from torch.utils.data import SequentialSampler
 
-        def _seq_sampler(self_t):  # noqa: ARG001
-            return SequentialSampler(self_t.train_dataset)
+        # transformers >=4.46 calls ``self._get_train_sampler(dataset)`` (HF
+        # commit 9d6c0641f); older versions called it with no args. Accept
+        # both signatures so the patch works across pinned trainer versions.
+        def _seq_sampler(self_t, dataset=None):  # noqa: ARG001
+            ds = dataset if dataset is not None else self_t.train_dataset
+            return SequentialSampler(ds)
 
         try:
             trainer._get_train_sampler = _seq_sampler.__get__(  # type: ignore[attr-defined]
