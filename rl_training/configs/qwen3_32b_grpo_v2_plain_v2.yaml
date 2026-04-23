@@ -1,0 +1,176 @@
+# GRPO v2 (second iteration) on Qwen3-32B + SFT v2, plain-text MedAgentBench.
+#
+# v1 -> v2 deltas (see grpo_v2_improvement_plan_*.plan.md for the diagnosis):
+#   - Capacity:    300 steps, lr 8e-6 (cosine_with_min_lr 2e-6), beta 0.04,
+#                  num_generations 8, LoRA r=32/alpha=64, max_completion 3072
+#   - Reward:      r_succ 15, r_premature_finish -0.4, r_conditional_order_branch 1.0,
+#                  r_post_shape_match 0.2, r_exec 0.03 + cap 5 (rebalance GET shaping),
+#                  r_step -0.015 (halve step penalty)
+#   - Curriculum:  enabled, two-phase via curriculum.phase_b_start_step
+#   - Eval gate:   eval_every_steps 25, mid-train val-set eval + best-ckpt tracking
+#   - Telemetry:   rollout_log_fraction 0.25, cloud_sync.also_sync rollouts/midrun
+
+model:
+  name_or_path: "/workspace/qwen3_32b_sft_v2_merged"
+  fallback: "Qwen/Qwen3-32B"
+  torch_dtype: "bfloat16"
+  attn_implementation: "sdpa"
+
+qlora:
+  enabled: true
+  r: 32
+  alpha: 64
+  dropout: 0.05
+  target_modules: "all-linear"
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "bfloat16"
+
+grpo:
+  max_steps: 300
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  num_generations: 8
+  max_prompt_length: 8192
+  max_completion_length: 3072
+  learning_rate: 8.0e-6
+  beta: 0.04
+  epsilon: 0.2
+  temperature: 0.9
+  top_p: 0.95
+  gradient_checkpointing: true
+  bf16: true
+  save_steps: 10
+  logging_steps: 1
+  log_completions: true
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  lr_scheduler_type: "cosine_with_min_lr"
+  lr_scheduler_kwargs:
+    min_lr: 2.0e-6
+  seed: 42
+  eval_every_steps: 25
+
+vllm:
+  use_vllm: false
+  mode: "server"
+  host: "127.0.0.1"
+  port: 8000
+  gpu_memory_utilization: 0.9
+  max_num_seqs: 4
+  max_model_len: 8192
+  tensor_parallel_size: 1
+  vllm_model_impl: "transformers"
+
+env:
+  action_format: "plain_text"
+  fhir_api_base: "http://localhost:8080/fhir/"
+  func_file: "data/medagentbench/funcs_v1.json"
+  max_rounds: 8
+  use_fhir_snapshot: true
+  snapshot_path: "rl_training/outputs/fhir_snapshot.jsonl"
+  snapshot_fallthrough: true
+  disable_qwen_thinking: true
+
+rewards:
+  correctness_weight: 1.0
+  efficiency_weight: 0.3
+  tool_usage_weight: 0.2
+  temporal_grounding_enabled: false
+  temporal_grounding_weight: 0.0
+  risk_calibrated_deferral_enabled: false
+  risk_calibrated_deferral_weight: 0.0
+  decision_density_enabled: false
+  decision_density_weight: 0.0
+
+benchmark_reward:
+  enabled: true
+  rollout_log_path: "rl_training/outputs/qwen3_32b_grpo_v2_plain_v2/rollouts.jsonl"
+  rollout_log_fraction: 0.25
+  max_rounds: 8
+  r_succ: 15.0
+  r_step: -0.015
+  r_exec: 0.03
+  r_redundant_get: -0.25
+  r_premature_post: -0.8
+  r_premature_finish: -0.4
+  r_conditional_order_branch: 1.0
+  r_post_shape_match: 0.2
+  r_first_invalid: -3.0
+  r_truncated: -0.5
+  max_get_exec_bonus_distinct: 5
+  strict_parse: true
+  efficiency_bonus_max: 0.4
+  canonicalize: true
+  fsm_constrained_decode: false
+  curriculum:
+    enabled: true
+    # Phase A: weakness-weighted sampling driven by v1 training-time per-family
+    # mean reward (read from rollouts.jsonl if present, else from v1 eval.json,
+    # else uniform). See rl_training/data/curriculum.py:two_phase_sampler.
+    # Phase B: hard-mode focus on task9/10/2.
+    phase_b_start_step: 100
+    # Phase A weights derived per-task at startup (see curriculum.py); the
+    # query_target_fraction key is kept for back-compat but ignored when
+    # mode == "two_phase".
+    mode: "two_phase"
+    query_target_fraction: 0.5
+    seed: 42
+    # Phase B fixed mix (must sum to 1.0). Tasks not listed get 0 weight.
+    phase_b_weights:
+      task9: 0.35
+      task10: 0.30
+      task2: 0.15
+      task4: 0.08
+      task5: 0.04
+      task6: 0.04
+      task7: 0.04
+    # Optional: hand-set Phase A weights (otherwise auto-derived from telemetry).
+    # Falls back to uniform if telemetry is missing.
+    phase_a_weights: null
+    # Where to look for v1 training-time signal to seed Phase A.
+    v1_rollouts_path: "rl_training/outputs/qwen3_32b_grpo_v2_plain/rollouts.jsonl"
+    v1_eval_fallback_path: "rl_training/outputs/qwen3_32b_grpo_v2_plain_eval/eval.json"
+
+data:
+  training_tasks_path: "rl_training/data/training_tasks_v2.json"
+  validation_tasks_path: "rl_training/data/validation_tasks_v2.json"
+  benchmark_tasks_path: "data/medagentbench/test_data_v2.json"
+  tasks_per_type: 30
+  include_stress_variants: false
+  seed: 42
+
+output:
+  dir: "rl_training/outputs/qwen3_32b_grpo_v2_plain_v2"
+  checkpoint_keep_last: 3
+  cloud_sync:
+    enabled: true
+    backend: "b2"
+    bucket: "medagentbench-checkpoint"
+    prefix: "qwen3_32b_run3/grpo_v2_plain_v2_ckpts"
+    # NEW: extra files (relative to output.dir) pushed alongside checkpoints
+    # every save. Patterns are matched with Path.glob; matches are uploaded
+    # to <prefix>/_telemetry/<relpath>.
+    also_sync:
+      - "rollouts.jsonl"
+      - "midrun_step*.json"
+      - "best_step.json"
+      - "best_adapter/**/*"
+
+resilience:
+  heartbeat_path: "/tmp/trainer_heartbeat"
+  heartbeat_stale_seconds: 7200
+  max_runtime_hours: 48
+  ntfy_topic: ""
+
+# Mid-train eval gate (see rl_training/scripts/train_grpo_32b.py + 0.3 in plan).
+midrun_eval:
+  enabled: true
+  every_steps: 25
+  validation_tasks_path: "rl_training/data/validation_tasks_v2.json"
+  temperature: 0.0
+  max_tokens: 2048
+  enable_thinking: false
+  # If val SR drops more than this many percentage points vs the previous
+  # mid-eval, raise to abort training (best_adapter/ is preserved).
+  abort_on_regression_pp: 5.0

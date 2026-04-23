@@ -270,19 +270,74 @@ def main() -> None:
     # Load training tasks
     with open(args.training_tasks) as f:
         tasks = json.load(f)
+
+    # Plan §0.3a: exclude the held-out validation task IDs from the GRPO
+    # training pool so we never train on val examples. Missing val file is
+    # not fatal — just logs a warning.
+    val_path = (cfg.get("data") or {}).get("validation_tasks_path")
+    val_ids: set[str] = set()
+    if val_path and os.path.exists(val_path):
+        try:
+            with open(val_path) as fh:
+                val_ids = {str(t.get("id", "")) for t in json.load(fh)}
+            before = len(tasks)
+            tasks = [t for t in tasks if str(t.get("id", "")) not in val_ids]
+            logger.info(
+                "Excluded %d held-out validation IDs from training pool (%d -> %d)",
+                len(val_ids), before, len(tasks),
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("Failed to load validation set %s: %s", val_path, exc)
+    elif val_path:
+        logger.warning(
+            "Validation tasks file %s not found; training pool is NOT filtered. "
+            "This means mid-train val eval will overlap with training data.",
+            val_path,
+        )
+
     cur_cfg = (cfg.get("benchmark_reward") or {}).get("curriculum") or cfg.get(
         "curriculum",
     )
+    used_two_phase = False
     if isinstance(cur_cfg, dict) and cur_cfg.get("enabled"):
-        from rl_training.data.curriculum import apply_soft_curriculum_mix
-
-        qfrac = float(cur_cfg.get("query_target_fraction", 0.7))
+        cur_mode = str(cur_cfg.get("mode") or "soft").lower()
         cseed = int(cur_cfg.get("seed", cfg.get("data", {}).get("seed", 42)))
-        tasks = apply_soft_curriculum_mix(tasks, qfrac, seed=cseed)
-        logger.info(
-            "Soft curriculum: query_target_fraction=%.2f seed=%d (len=%d)",
-            qfrac, cseed, len(tasks),
-        )
+        if cur_mode == "two_phase":
+            from rl_training.data.curriculum import two_phase_materialise
+
+            prompts_per_step = (
+                int(cfg["grpo"]["per_device_train_batch_size"])
+                * int(cfg["grpo"]["gradient_accumulation_steps"])
+            )
+            phase_b_start = int(cur_cfg.get("phase_b_start_step", 100))
+            total_prompts = max_steps * prompts_per_step
+            phase_a_prompts = min(total_prompts, phase_b_start * prompts_per_step)
+            tasks = two_phase_materialise(
+                tasks,
+                total_prompts=total_prompts,
+                phase_a_prompts=phase_a_prompts,
+                phase_a_weights=cur_cfg.get("phase_a_weights"),
+                phase_b_weights=cur_cfg.get("phase_b_weights"),
+                v1_rollouts_path=cur_cfg.get("v1_rollouts_path"),
+                v1_eval_fallback_path=cur_cfg.get("v1_eval_fallback_path"),
+                seed=cseed,
+            )
+            used_two_phase = True
+            logger.info(
+                "Two-phase curriculum: max_steps=%d prompts_per_step=%d "
+                "phase_b_start=%d total=%d (Phase A %d prompts)",
+                max_steps, prompts_per_step, phase_b_start,
+                total_prompts, phase_a_prompts,
+            )
+        else:
+            from rl_training.data.curriculum import apply_soft_curriculum_mix
+
+            qfrac = float(cur_cfg.get("query_target_fraction", 0.7))
+            tasks = apply_soft_curriculum_mix(tasks, qfrac, seed=cseed)
+            logger.info(
+                "Soft curriculum: query_target_fraction=%.2f seed=%d (len=%d)",
+                qfrac, cseed, len(tasks),
+            )
     from rl_training.data.prepare_dataset import tasks_to_dataset
     dataset = tasks_to_dataset(tasks, cfg["env"]["fhir_api_base"])
     logger.info("Loaded %d training tasks", len(dataset))
@@ -419,9 +474,40 @@ def main() -> None:
                 prefix=cloud_cfg["prefix"],
                 keep_last=cfg["output"].get("checkpoint_keep_last", 3),
                 progress_jsonl=os.path.join(output_dir, "progress.jsonl"),
+                also_sync=cloud_cfg.get("also_sync") or [],
+                also_sync_root=output_dir,
             ))
         except Exception as exc:
             logger.warning("CloudSyncCallback unavailable: %s", exc)
+
+    # Plan §0.3b: mid-train validation eval + best-checkpoint tracking.
+    midrun_cfg = cfg.get("midrun_eval") or {}
+    if midrun_cfg.get("enabled"):
+        try:
+            from rl_training.training.midrun_eval import MidrunValidationCallback
+            callbacks.append(MidrunValidationCallback(
+                output_dir=output_dir,
+                validation_tasks_path=midrun_cfg.get(
+                    "validation_tasks_path",
+                    "rl_training/data/validation_tasks_v2.json",
+                ),
+                every_steps=int(
+                    midrun_cfg.get("every_steps")
+                    or cfg["grpo"].get("eval_every_steps", 25),
+                ),
+                fhir_api_base=cfg["env"]["fhir_api_base"],
+                func_file=cfg["env"]["func_file"],
+                max_rounds=int(cfg["env"].get("max_rounds", 8)),
+                max_new_tokens=int(midrun_cfg.get("max_tokens", 2048)),
+                enable_thinking=bool(midrun_cfg.get("enable_thinking", False)),
+                abort_on_regression_pp=float(
+                    midrun_cfg.get("abort_on_regression_pp", 5.0),
+                ),
+            ))
+            logger.info("MidrunValidationCallback enabled (every_steps=%s)",
+                        midrun_cfg.get("every_steps"))
+        except Exception as exc:
+            logger.warning("MidrunValidationCallback unavailable: %s", exc)
 
     resume = _resolve_resume_checkpoint(
         args.resume_from_checkpoint, cloud_cfg, output_dir,
@@ -478,6 +564,25 @@ def main() -> None:
         trainer_kwargs["environment_factory"] = MedAgentBenchEnv
 
     trainer = GRPOTrainer(**trainer_kwargs)
+
+    # Plan §0.4: when the two-phase materialised dataset is in use, force a
+    # sequential sampler so step-N draws prompts [N*B : (N+1)*B] from the
+    # pre-rolled list. Without this, HF Trainer's RandomSampler would shuffle
+    # Phase A and Phase B together and dilute the curriculum.
+    if used_two_phase:
+        from torch.utils.data import SequentialSampler
+
+        def _seq_sampler(self_t):  # noqa: ARG001
+            return SequentialSampler(self_t.train_dataset)
+
+        try:
+            trainer._get_train_sampler = _seq_sampler.__get__(  # type: ignore[attr-defined]
+                trainer, type(trainer),
+            )
+            logger.info("Patched trainer._get_train_sampler -> SequentialSampler "
+                        "for two-phase curriculum")
+        except Exception as exc:
+            logger.warning("Failed to patch sequential sampler: %s", exc)
 
     logger.info(
         "Starting GRPO on %s | steps=%d | G=%d | bs=%d | grad_accum=%d | vllm=%s",

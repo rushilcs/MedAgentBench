@@ -30,6 +30,19 @@ _RUNTIME: dict[str, Any] = {
     "r_redundant_get": -0.25,
     "r_step": -0.03,
     "r_premature_post": -0.8,
+    # Mirror of r_premature_post for FINISH on action families before any GET.
+    # Targets v1's task2 regression where the model learned to skip the lookup
+    # and FINISH directly. Off (0.0) by default; v2 config sets it to -0.4.
+    "r_premature_finish": 0.0,
+    # task9 / task10 partial-credit on the conditional-order "no-result"
+    # branch: fires when an Observation GET returned empty AND the rollout
+    # subsequently emitted both a POST and a FINISH (i.e. it tried to act
+    # rather than punting). Off by default; v2 config sets it to 1.0.
+    "r_conditional_order_branch": 0.0,
+    # Partial credit for POSTs whose body has the right resource type +
+    # required fields but wrong values. Suppressed when refsol passes (the
+    # success branch returns before any of this fires anyway). Off by default.
+    "r_post_shape_match": 0.0,
     "r_first_invalid": -3.0,
     # Penalty for rollouts that ran out of turns without ever calling FINISH.
     # Distinguishes "ran out of budget" from "answered wrong" so the optimizer
@@ -410,6 +423,42 @@ def _score_from_extracted(
                 ) + pp
                 _rt("premature_post", pp)
                 step_terms["premature_post"] = pp
+            # POST body shape partial credit (only when refsol failed,
+            # which is guaranteed here — the passed branch returned earlier).
+            r_psm = float(_RUNTIME.get("r_post_shape_match", 0.0))
+            if r_psm != 0.0 and is_action_family(case_data.get("id", "")):
+                from rl_training.rl.verifiers.post_body_shape import (
+                    post_body_shape_ok,
+                )
+                payload = entry.get("payload")
+                body: Any = None
+                if isinstance(payload, str) and payload.strip():
+                    try:
+                        body = json.loads(payload)
+                    except (json.JSONDecodeError, TypeError):
+                        body = None
+                elif isinstance(payload, dict):
+                    body = payload
+                if post_body_shape_ok(case_data.get("id", ""), body):
+                    R += r_psm
+                    trace["terms"]["post_shape_match"] = trace.get("terms", {}).get(
+                        "post_shape_match", 0.0,
+                    ) + r_psm
+                    _rt("post_shape_match", r_psm)
+                    step_terms["post_shape_match"] = r_psm
+        elif act == "FINISH":
+            if (
+                is_action_family(case_data.get("id", ""))
+                and not seen_get_attempt
+            ):
+                pf = float(_RUNTIME.get("r_premature_finish", 0.0))
+                if pf != 0.0:
+                    R += pf
+                    trace["terms"]["premature_finish"] = trace.get("terms", {}).get(
+                        "premature_finish", 0.0,
+                    ) + pf
+                    _rt("premature_finish", pf)
+                    step_terms["premature_finish"] = pf
         step_debug.append({
             "step": entry.get("step"),
             "action": act,
@@ -440,6 +489,38 @@ def _score_from_extracted(
     if rred < 0:
         trace["terms"]["redundant_get"] = rred
         _rt("redundant_get", rred)
+
+    # task9 / task10 conditional-order branch shaping. Fires when the rollout
+    # both observed an empty Observation lookup AND emitted POST + FINISH
+    # (so the policy chose to *act* rather than punt). Gives GRPO a useful
+    # gradient on these tasks even when none of the group's rollouts pass
+    # refsol — converts the ``r_succ`` cliff into a 1.0 → r_succ ladder.
+    r_cob = float(_RUNTIME.get("r_conditional_order_branch", 0.0))
+    if r_cob != 0.0:
+        from rl_training.rl.verifiers.post_body_shape import (
+            is_conditional_order_family,
+        )
+        if is_conditional_order_family(case_data.get("id", "")):
+            empty_observation_get = False
+            for e in tool_log:
+                if (
+                    e.get("action") == "GET"
+                    and "Observation" in str(e.get("url", ""))
+                    and "code=" in str(e.get("url", ""))
+                ):
+                    # Empty FHIR bundles (total: 0) serialize to ~150-250 bytes;
+                    # a successful non-empty bundle with even one entry is well
+                    # above 600 bytes. Use 300 as a conservative cutoff.
+                    rl = int(e.get("response_len", 0) or 0)
+                    if e.get("success") and 0 < rl < 300:
+                        empty_observation_get = True
+                        break
+            posted = any(e.get("action") == "POST" for e in tool_log)
+            finished_finish = any(e.get("action") == "FINISH" for e in tool_log)
+            if empty_observation_get and posted and finished_finish:
+                R += r_cob
+                trace["terms"]["conditional_order_branch"] = r_cob
+                _rt("conditional_order_branch", r_cob)
 
     # Truncation penalty: rollout ended without a FINISH action. Lets the
     # optimizer separate "ran out of turns" from "answered wrong". Only

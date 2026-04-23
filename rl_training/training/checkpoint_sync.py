@@ -37,6 +37,7 @@ class _CloudBackend:
     """Abstract interface for a bucket uploader."""
 
     def upload_directory(self, local_dir: str, remote_prefix: str) -> None: ...
+    def upload_file(self, local_file: str, remote_key: str) -> None: ...
     def list_remote_checkpoints(self, remote_prefix: str) -> list[str]: ...
     def delete_remote_prefix(self, remote_prefix: str) -> None: ...
     def download_directory(self, remote_prefix: str, local_dir: str) -> None: ...
@@ -67,6 +68,9 @@ class _B2Backend(_CloudBackend):
                 self._bucket.upload_local_file(
                     local_file=str(path), file_name=key,
                 )
+
+    def upload_file(self, local_file: str, remote_key: str) -> None:
+        self._bucket.upload_local_file(local_file=local_file, file_name=remote_key)
 
     def list_remote_checkpoints(self, remote_prefix: str) -> list[str]:
         seen: set[str] = set()
@@ -108,6 +112,9 @@ class _S3Backend(_CloudBackend):
                 rel = path.relative_to(local_dir).as_posix()
                 key = f"{remote_prefix.rstrip('/')}/{rel}"
                 self._s3.upload_file(str(path), self._bucket, key)
+
+    def upload_file(self, local_file: str, remote_key: str) -> None:
+        self._s3.upload_file(local_file, self._bucket, remote_key)
 
     def list_remote_checkpoints(self, remote_prefix: str) -> list[str]:
         seen: set[str] = set()
@@ -171,12 +178,20 @@ class CloudSyncCallback(TrainerCallback):
         prefix: str,
         keep_last: int = 3,
         progress_jsonl: str | None = None,
+        also_sync: list[str] | None = None,
+        also_sync_root: str | None = None,
     ):
         self.backend_name = backend
         self.bucket = bucket
         self.prefix = prefix.rstrip("/")
         self.keep_last = keep_last
         self.progress_jsonl = progress_jsonl
+        # Glob patterns relative to ``also_sync_root`` that get pushed to
+        # ``<prefix>/_telemetry/<relpath>`` on every checkpoint sync. Closes
+        # the v1 observability gap (rollouts.jsonl, midrun_step*.json,
+        # best_step.json, best_adapter/ all accessible from B2 without ssh).
+        self.also_sync = list(also_sync or [])
+        self.also_sync_root = also_sync_root
         self._backend: _CloudBackend | None = None
         self._disabled = False
         try:
@@ -208,6 +223,7 @@ class CloudSyncCallback(TrainerCallback):
             return control
         self._prune_remote()
         self._maybe_upload_progress()
+        self._maybe_upload_extra()
         return control
 
     def on_log(self, args, state, control, **kwargs: Any):  # noqa: D401
@@ -231,6 +247,43 @@ class CloudSyncCallback(TrainerCallback):
                 logger.info("Pruned remote checkpoint %s", name)
         except Exception as exc:
             logger.warning("Checkpoint pruning failed: %s", exc)
+
+    def _maybe_upload_extra(self) -> None:
+        """Push files matching ``also_sync`` globs to ``<prefix>/_telemetry/<relpath>``."""
+        if (
+            self._backend is None
+            or not self.also_sync
+            or not self.also_sync_root
+        ):
+            return
+        root = Path(self.also_sync_root)
+        if not root.is_dir():
+            return
+        seen: set[Path] = set()
+        for pattern in self.also_sync:
+            try:
+                matches = list(root.glob(pattern))
+            except (OSError, ValueError) as exc:
+                logger.debug("also_sync glob %r failed: %s", pattern, exc)
+                continue
+            for match in matches:
+                if match.is_file():
+                    seen.add(match)
+                elif match.is_dir():
+                    for f in match.rglob("*"):
+                        if f.is_file():
+                            seen.add(f)
+        for f in seen:
+            try:
+                rel = f.relative_to(root).as_posix()
+            except ValueError:
+                continue
+            remote_key = f"{self.prefix}/_telemetry/{rel}"
+            try:
+                self._backend.upload_file(str(f), remote_key)
+            except Exception as exc:
+                logger.debug("also_sync upload failed for %s -> %s: %s",
+                             f, remote_key, exc)
 
     def _maybe_upload_progress(self) -> None:
         if (
