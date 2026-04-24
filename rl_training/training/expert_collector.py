@@ -111,6 +111,16 @@ def _get_json(url: str) -> dict | None:
 
 
 def _make_traj(task: dict, turns: list[Turn], status: str = "completed") -> Trajectory:
+    # Hard-fail if any assistant turn carries more than one action (or zero).
+    # The MedAgentBench env contract requires exactly one of GET / POST /
+    # FINISH per turn; refsol's extract_posts only recognises a POST when
+    # the *next* user turn says "POST request accepted", so two POSTs in
+    # one assistant turn silently grade as wrong.
+    from rl_training.training.single_action_invariant import assert_valid
+
+    msgs = [{"role": t.role, "content": t.content} for t in turns]
+    assert_valid(msgs, context=f"expert builder for {task.get('id', '?')}")
+
     return Trajectory(
         task_id=task["id"],
         task_data=task,

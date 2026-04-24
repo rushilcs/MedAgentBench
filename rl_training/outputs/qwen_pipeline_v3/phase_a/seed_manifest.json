@@ -1,0 +1,73 @@
+{
+  "fhir_base": "http://localhost:8080/fhir/",
+  "seed": 20260424,
+  "test_mrn_count": 98,
+  "v2_train_mrn_count": 597,
+  "needed_per_code": {
+    "K": 225,
+    "A1C": 150,
+    "MG": 50
+  },
+  "seeded": {
+    "task9/normal_k": {
+      "count": 200,
+      "mrn_examples": [
+        "S1531141",
+        "S6488443",
+        "S0819510",
+        "S6531942",
+        "S6546496"
+      ]
+    },
+    "task9/low_k": {
+      "count": 25,
+      "mrn_examples": [
+        "S6548866",
+        "S1747896",
+        "S6420036",
+        "S6547472",
+        "S2827730"
+      ]
+    },
+    "task10/fresh_a1c": {
+      "count": 100,
+      "mrn_examples": [
+        "S1531141",
+        "S6488443",
+        "S0819510",
+        "S6531942",
+        "S6546496"
+      ]
+    },
+    "task10/stale_a1c": {
+      "count": 50,
+      "mrn_examples": [
+        "S0542928",
+        "S1048735",
+        "S6541589",
+        "S3131358",
+        "S6456002"
+      ]
+    },
+    "task5/low_mg": {
+      "count": 25,
+      "mrn_examples": [
+        "S1531141",
+        "S6488443",
+        "S0819510",
+        "S6531942",
+        "S6546496"
+      ]
+    },
+    "task5/high_mg": {
+      "count": 25,
+      "mrn_examples": [
+        "S6525008",
+        "S6445107",
+        "S6257023",
+        "S6514387",
+        "S1635292"
+      ]
+    }
+  }
+}

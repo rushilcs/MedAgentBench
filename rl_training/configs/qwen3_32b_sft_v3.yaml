@@ -1,0 +1,88 @@
+# SFT v3: continue from qwen3_32b_sft_v2_merged with a fresh QLoRA adapter,
+# trained on the v2 corpus + 298 branch-balanced augmentation rows targeting
+# the failure modes surfaced by the audit:
+#   * task9 was 13.3% because every v2 training MRN had ZERO K data --
+#     the model only learned "GET → empty → FINISH([])" but the test set
+#     is 29/30 "GET → see normal K → FINISH([])". v3 adds 104 "normal K"
+#     trajectories (via seeded FHIR observations on training MRNs).
+#   * task10 was 40% because v2 over-trained on the data_absent_order
+#     branch. v3 adds 55 fresh_report_value + 25 stale_order_required
+#     trajectories so the model practises both branches.
+#   * task5 was generally fine but the low-Mg POST branch is rare in
+#     the test set (2/30) and easy to forget. v3 keeps it alive with
+#     13 fresh low_order trajectories.
+#
+# Lower LR and fewer epochs because we're refining a model that already
+# scores 75% on the benchmark, not training from a cold base.
+
+model:
+  # SFT v2 merged checkpoint serves as the base; the LoRA adapter we train
+  # here is fresh (no QLoRA-on-LoRA stacking). The path is set on the pod
+  # at bootstrap time once the merged dir is pulled from B2 to /qwen3_32b_sft_v2_merged.
+  name_or_path: "/qwen3_32b_sft_v2_merged"
+  fallback: "Qwen/Qwen3-32B-Instruct"
+  torch_dtype: "bfloat16"
+  attn_implementation: "sdpa"
+
+qlora:
+  enabled: true
+  r: 64
+  alpha: 128
+  dropout: 0.05
+  target_modules: "all-linear"
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "bfloat16"
+
+sft:
+  num_train_epochs: 2
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 8
+  # Lower than v2 (1e-5) since the base is already SFT'd; we want to nudge,
+  # not overhaul. Cosine schedule with short warmup.
+  learning_rate: 5.0e-6
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  max_seq_length: 5120
+  disable_qwen_thinking: true
+  packing: false
+  completion_only_loss: true
+  bf16: true
+  gradient_checkpointing: true
+  save_steps: 50
+  save_strategy: "steps"
+  logging_steps: 10
+  seed: 42
+
+data:
+  sft_jsonl: "rl_training/outputs/qwen_pipeline_v3/phase_a/qwen_sft_v3_openai.jsonl"
+  training_tasks_path: "rl_training/outputs/qwen_pipeline_v3/phase_a/training_tasks_v3.json"
+
+output:
+  dir: "rl_training/outputs/qwen3_32b_sft_v3"
+  checkpoint_keep_last: 3
+  cloud_sync:
+    enabled: true
+    backend: "b2"
+    bucket: "medagentbench-checkpoint"
+    # Brand new prefix so v2 artifacts under qwen3_32b_run3/qwen3_32b_sft_v2_*
+    # are NEVER touched by this run.
+    prefix: "qwen3_32b_run3/qwen3_32b_sft_v3_ckpts"
+
+resilience:
+  heartbeat_path: "/tmp/trainer_heartbeat"
+  heartbeat_stale_seconds: 900
+  max_runtime_hours: 8
+  ntfy_topic: ""
+
+# Mid-train + benchmark eval routing. Snapshot-only on the pod (no
+# Cloudflare tunnel dependency during training); post-train eval is run
+# separately via run_post_train_eval.py with FHIR_LIVE_BASE_OVERRIDE set.
+env:
+  fhir_api_base: "http://localhost:8080/fhir/"
+  max_rounds: 8
+  data_file: "data/medagentbench/test_data_v2.json"
+  func_file: "data/medagentbench/funcs_v1.json"
+  fhir_snapshot_jsonl: "rl_training/outputs/fhir_snapshot.jsonl"
+  fhir_snapshot_fallthrough: false  # snapshot-only during training; pod has no live FHIR

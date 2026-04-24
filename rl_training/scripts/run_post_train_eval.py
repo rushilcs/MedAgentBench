@@ -124,10 +124,13 @@ def main() -> None:
     parser.add_argument(
         "--enable-thinking",
         choices=["true", "false"],
-        default="true",
+        default="false",
         help="Pass chat_template_kwargs.enable_thinking to vLLM (Qwen3 thinking mode). "
+             "Default is 'false' so eval matches SFT/GRPO training (which set "
+             "disable_qwen_thinking via apply_chat_template(enable_thinking=False)). "
              "When 'false', vLLM prepends a closed <think></think> block so the model "
-             "emits the answer directly (fixes refsol's first-line URL parser).",
+             "emits the answer directly (fixes refsol's first-line URL parser). "
+             "Override only when intentionally probing the thinking-on regime.",
     )
     parser.add_argument(
         "--fhir-snapshot-jsonl",
@@ -205,6 +208,41 @@ def main() -> None:
     if args.enable_thinking == "false":
         extra_body = {"chat_template_kwargs": {"enable_thinking": False}}
         logger.info("enable_thinking=False (Qwen3 thinking disabled at inference)")
+
+    # Chat-template parity gate. If SFT wrote a fingerprint next to the
+    # merged checkpoint (or next to the LoRA adapter), refuse to start eval
+    # unless this process formats chats the same way SFT did. Closes the
+    # historical 'eval default differs from SFT default' bug class.
+    fingerprint_search = []
+    if args.merge_and_serve and args.merged_output_dir:
+        fingerprint_search.append(Path(args.merged_output_dir) / "chat_template_fingerprint.json")
+    if args.lora_adapter:
+        fingerprint_search.append(Path(args.lora_adapter) / "chat_template_fingerprint.json")
+    fingerprint_path = next((p for p in fingerprint_search if p.exists()), None)
+    if fingerprint_path is not None:
+        try:
+            from transformers import AutoTokenizer
+            from rl_training.training.chat_template_parity import assert_parity
+
+            _tok = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
+            _result = assert_parity(
+                _tok,
+                fingerprint_path,
+                enable_thinking=(args.enable_thinking == "true"),
+            )
+            logger.info(
+                "Chat-template parity OK against %s (template_md5=%s)",
+                fingerprint_path, _result["current"]["template_md5"],
+            )
+        except Exception as exc:
+            logger.error("Chat-template parity check FAILED: %s", exc)
+            raise
+    else:
+        logger.warning(
+            "No chat_template_fingerprint.json found alongside checkpoint; "
+            "skipping parity assertion (consider re-running SFT with the "
+            "fingerprint helper to enable this guard).",
+        )
     policy = VLLMPolicy(
         model_id=served_model,
         base_url=args.vllm_base_url,
@@ -308,6 +346,17 @@ def main() -> None:
     result = compute_metrics(trajectories)
     print("\n" + result.summary())
 
+    # Compute an SR that excludes infrastructure failures (FHIR HTTP errors,
+    # tunnel down, etc.). These are not the model's fault; counting them as
+    # wrong inflates apparent error rates.
+    infra_error_count = sum(1 for t in trajectories if getattr(t, "infra_error", False))
+    non_infra_total = max(1, result.total - infra_error_count)
+    non_infra_correct = sum(
+        1 for t in trajectories
+        if t.correct and not getattr(t, "infra_error", False)
+    )
+    sr_excluding_infra = non_infra_correct / non_infra_total
+
     with open(out_dir / "eval.json", "w") as f:
         json.dump({
             "model_id": served_model,
@@ -323,7 +372,18 @@ def main() -> None:
             "invalid_action_rate": result.invalid_action_rate,
             "limit_reached_rate": result.limit_reached_rate,
             "avg_steps": result.avg_steps,
+            "infra_error_count": infra_error_count,
+            "infra_error_rate": infra_error_count / max(1, result.total),
+            "success_rate_excluding_infra_errors": sr_excluding_infra,
         }, f, indent=2)
+    if infra_error_count:
+        logger.warning(
+            "%d/%d tasks hit FHIR infra errors during eval (HTTP error / "
+            "tunnel down). Headline SR=%.1f%%; SR excluding infra errors="
+            "%.1f%%.",
+            infra_error_count, result.total,
+            100 * result.success_rate, 100 * sr_excluding_infra,
+        )
 
     clinical = compute_clinical_metrics(trajectories)
     save_clinical_metrics(clinical, str(out_dir / "clinical.json"))

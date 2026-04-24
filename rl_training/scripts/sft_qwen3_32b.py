@@ -100,9 +100,13 @@ def _read_sft_jsonl_rows(jsonl_path: str) -> list[dict[str, Any]]:
     Split out from ``_load_sft_dataset`` so the dry-run path doesn't need
     the ``datasets`` package.
     """
+    from rl_training.training.single_action_invariant import violations
+
     rows: list[dict[str, Any]] = []
+    bad_rows = 0
+    bad_examples: list[str] = []
     with open(jsonl_path) as f:
-        for line in f:
+        for ln_no, line in enumerate(f, 1):
             line = line.strip()
             if not line:
                 continue
@@ -110,7 +114,24 @@ def _read_sft_jsonl_rows(jsonl_path: str) -> list[dict[str, Any]]:
             msgs = obj.get("messages")
             if not msgs:
                 continue
+            v = violations(msgs)
+            if v:
+                bad_rows += 1
+                if len(bad_examples) < 5:
+                    bad_examples.append(
+                        f"line {ln_no} idx={v[0]['index']} counts={v[0]['counts']} "
+                        f"content[:80]={v[0]['content'][:80]!r}"
+                    )
+                continue
             rows.append({"messages": msgs})
+    if bad_rows:
+        # Refuse to silently train on malformed turns -- this is the
+        # historical 'two POSTs in one assistant turn graded as wrong' bug
+        # surfaced at the data layer instead of at eval time.
+        raise RuntimeError(
+            f"Single-action-per-turn invariant violated by {bad_rows} rows in "
+            f"{jsonl_path}. First few:\n  " + "\n  ".join(bad_examples)
+        )
     if not rows:
         raise RuntimeError(f"No usable rows in {jsonl_path}")
     return rows
@@ -292,6 +313,20 @@ def main() -> None:
             )
         except Exception as exc:
             logger.warning("Chat-template sanity probe failed: %s", exc)
+
+        # Persist a chat-template parity fingerprint so eval can refuse to
+        # start if it would format the same chat differently than SFT did.
+        try:
+            from rl_training.training.chat_template_parity import write_fingerprint
+
+            fp_path = write_fingerprint(
+                tokenizer,
+                output_dir,
+                enable_thinking=False,
+            )
+            logger.info("Wrote chat-template parity fingerprint to %s", fp_path)
+        except Exception as exc:
+            logger.warning("Failed to write chat-template fingerprint: %s", exc)
 
     # For ETA display: if the user passed --max-steps we use it; otherwise
     # estimate steps = ceil(epochs * rows / (bs * grad_accum)).

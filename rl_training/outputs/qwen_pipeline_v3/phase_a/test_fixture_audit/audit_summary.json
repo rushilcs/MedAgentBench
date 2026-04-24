@@ -1,0 +1,47 @@
+{
+  "n_rows": 300,
+  "infra_errors": 0,
+  "fhir_base": "http://localhost:8080/fhir/",
+  "fhir_override": "",
+  "branch_distribution_per_task": {
+    "task1": {
+      "patient_found": 28,
+      "no_mrn": 2
+    },
+    "task10": {
+      "data_absent_order_required": 13,
+      "fresh_report_value": 13,
+      "stale_order_required": 4
+    },
+    "task2": {
+      "n/a": 30
+    },
+    "task3": {
+      "n/a": 30
+    },
+    "task4": {
+      "data_absent": 19,
+      "data_present": 11
+    },
+    "task5": {
+      "data_absent_no_order": 16,
+      "high_no_order": 12,
+      "low_order_required": 2
+    },
+    "task6": {
+      "data_present": 28,
+      "data_absent": 2
+    },
+    "task7": {
+      "data_present": 30
+    },
+    "task8": {
+      "n/a": 30
+    },
+    "task9": {
+      "normal_no_order": 29,
+      "low_order_required": 1
+    }
+  },
+  "audited_at": "2026-04-24T19:29:14.036089Z"
+}

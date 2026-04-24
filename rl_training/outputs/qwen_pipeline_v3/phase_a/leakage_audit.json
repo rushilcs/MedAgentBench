@@ -1,0 +1,13 @@
+{
+  "n_train_tasks": 1060,
+  "n_test_tasks": 300,
+  "n_train_unique_mrns": 106,
+  "n_test_unique_mrns": 98,
+  "mrn_overlap_count": 0,
+  "mrn_overlap_examples": [],
+  "task_id_overlap_count": 0,
+  "task_id_overlap_examples": [],
+  "passed": true,
+  "train_path": "rl_training/outputs/qwen_pipeline_v3/phase_a/training_tasks_v2.json",
+  "test_path": "data/medagentbench/test_data_v2.json"
+}

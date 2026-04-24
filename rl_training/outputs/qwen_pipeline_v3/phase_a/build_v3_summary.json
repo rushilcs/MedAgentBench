@@ -1,0 +1,73 @@
+{
+  "v3_seed": 131313,
+  "fhir_base": "http://localhost:8080/fhir/",
+  "v2_rows": 1457,
+  "targets_total": 500,
+  "target_augmentations": {
+    "task9": {
+      "normal_no_order": 200,
+      "low_order_required": 25
+    },
+    "task10": {
+      "fresh_report_value": 100,
+      "stale_order_required": 50,
+      "data_absent_order_required": 50
+    },
+    "task5": {
+      "low_order_required": 25,
+      "high_no_order": 25,
+      "data_absent_no_order": 25
+    }
+  },
+  "v3_added": 298,
+  "v3_added_by_task_branch": {
+    "task9/normal_no_order": 104,
+    "task9/low_order_required": 11,
+    "task10/data_absent_order_required": 50,
+    "task10/stale_order_required": 25,
+    "task10/fresh_report_value": 55,
+    "task5/data_absent_no_order": 25,
+    "task5/low_order_required": 13,
+    "task5/high_no_order": 15
+  },
+  "skip_reasons": {
+    "task9/data_absent_no_order/not_targeted": 181,
+    "task10/data_absent_order_required/quota_full": 166,
+    "task5/data_absent_no_order/quota_full": 243
+  },
+  "target_branch_fill": {
+    "task9/normal_no_order": {
+      "got": 104,
+      "wanted": 200
+    },
+    "task9/low_order_required": {
+      "got": 11,
+      "wanted": 25
+    },
+    "task10/fresh_report_value": {
+      "got": 55,
+      "wanted": 100
+    },
+    "task10/stale_order_required": {
+      "got": 25,
+      "wanted": 50
+    },
+    "task10/data_absent_order_required": {
+      "got": 50,
+      "wanted": 50
+    },
+    "task5/low_order_required": {
+      "got": 13,
+      "wanted": 25
+    },
+    "task5/high_no_order": {
+      "got": 15,
+      "wanted": 25
+    },
+    "task5/data_absent_no_order": {
+      "got": 25,
+      "wanted": 25
+    }
+  },
+  "combined_total": 1755
+}

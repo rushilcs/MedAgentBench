@@ -69,6 +69,11 @@ class MedAgentEnv:
         self._task: dict[str, Any] = {}
         self._round = 0
         self.step_rewards: list[float] = []
+        # True iff at least one GET in this episode came back as a non-data
+        # error (HTTP 4xx/5xx, snapshot miss with no fall-through, tunnel
+        # down). Eval can use this to compute an SR that excludes
+        # infrastructure failures from the denominator.
+        self._infra_error: bool = False
 
         self._refsol = importlib.import_module("src.server.tasks.medagentbench.refsol")
 
@@ -77,6 +82,7 @@ class MedAgentEnv:
         self._task = task
         self._round = 0
         self.step_rewards = []
+        self._infra_error = False
 
         prompt = _SYSTEM_PROMPT.format(
             api_base=self.fhir_api_base,
@@ -111,6 +117,10 @@ class MedAgentEnv:
                 )
             else:
                 reply = f"Error in sending the GET request: {get_res['error']}"
+                # Mark this episode as having a non-data infra failure so
+                # eval can distinguish 'model got it wrong' from 'FHIR was
+                # unreachable / returned an error'.
+                self._infra_error = True
             self._state.history.append({"role": "user", "content": reply})
             r = compute_step_reward("get", True)
 
@@ -147,6 +157,10 @@ class MedAgentEnv:
             self._state.status = "limit_reached"
 
         return StepResult(state=self._state, action=action, reward=r)
+
+    def had_infra_error(self) -> bool:
+        """True iff at least one FHIR GET this episode returned a non-data error."""
+        return self._infra_error
 
     def grade(self) -> bool:
         """Grade the completed episode using the reference solution."""

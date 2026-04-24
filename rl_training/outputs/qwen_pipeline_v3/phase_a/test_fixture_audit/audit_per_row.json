@@ -1,0 +1,2053 @@
+[
+  {
+    "id": "task1_1",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6534835"
+    ]
+  },
+  {
+    "id": "task1_2",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6426560"
+    ]
+  },
+  {
+    "id": "task1_3",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S1986380"
+    ]
+  },
+  {
+    "id": "task1_4",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6484983"
+    ]
+  },
+  {
+    "id": "task1_5",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S2703270"
+    ]
+  },
+  {
+    "id": "task1_6",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S2874099"
+    ]
+  },
+  {
+    "id": "task1_7",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6200102"
+    ]
+  },
+  {
+    "id": "task1_8",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6530532"
+    ]
+  },
+  {
+    "id": "task1_9",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6539215"
+    ]
+  },
+  {
+    "id": "task1_10",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6264184"
+    ]
+  },
+  {
+    "id": "task1_11",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6521727"
+    ]
+  },
+  {
+    "id": "task1_12",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S0789363"
+    ]
+  },
+  {
+    "id": "task1_13",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S2154941"
+    ]
+  },
+  {
+    "id": "task1_14",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S2197736"
+    ]
+  },
+  {
+    "id": "task1_15",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S3228213"
+    ]
+  },
+  {
+    "id": "task1_16",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6551923"
+    ]
+  },
+  {
+    "id": "task1_17",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S2119664"
+    ]
+  },
+  {
+    "id": "task1_18",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S2863714"
+    ]
+  },
+  {
+    "id": "task1_19",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6192632"
+    ]
+  },
+  {
+    "id": "task1_20",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S0658561"
+    ]
+  },
+  {
+    "id": "task1_21",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S0547588"
+    ]
+  },
+  {
+    "id": "task1_22",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S0722219"
+    ]
+  },
+  {
+    "id": "task1_23",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S3057899"
+    ]
+  },
+  {
+    "id": "task1_24",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6538722"
+    ]
+  },
+  {
+    "id": "task1_25",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S6545016"
+    ]
+  },
+  {
+    "id": "task1_26",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S3236936"
+    ]
+  },
+  {
+    "id": "task1_27",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S3213957"
+    ]
+  },
+  {
+    "id": "task1_28",
+    "task": "task1",
+    "branch": "patient_found",
+    "stored_sol": [
+      "S2704870"
+    ]
+  },
+  {
+    "id": "task1_29",
+    "task": "task1",
+    "branch": "no_mrn"
+  },
+  {
+    "id": "task1_30",
+    "task": "task1",
+    "branch": "no_mrn"
+  },
+  {
+    "id": "task2_1",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_2",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_3",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_4",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_5",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_6",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_7",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_8",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_9",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_10",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_11",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_12",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_13",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_14",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_15",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_16",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_17",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_18",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_19",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_20",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_21",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_22",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_23",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_24",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_25",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_26",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_27",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_28",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_29",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task2_30",
+    "task": "task2",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_1",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_2",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_3",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_4",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_5",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_6",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_7",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_8",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_9",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_10",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_11",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_12",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_13",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_14",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_15",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_16",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_17",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_18",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_19",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_20",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_21",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_22",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_23",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_24",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_25",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_26",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_27",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_28",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_29",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task3_30",
+    "task": "task3",
+    "branch": "n/a"
+  },
+  {
+    "id": "task4_1",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_2",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_3",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      2.7
+    ]
+  },
+  {
+    "id": "task4_4",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_5",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      2.1
+    ]
+  },
+  {
+    "id": "task4_6",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_7",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_8",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_9",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_10",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_11",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_12",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_13",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      2.2
+    ]
+  },
+  {
+    "id": "task4_14",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_15",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      2.2
+    ]
+  },
+  {
+    "id": "task4_16",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_17",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      2.1
+    ]
+  },
+  {
+    "id": "task4_18",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_19",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_20",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      2.0
+    ]
+  },
+  {
+    "id": "task4_21",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_22",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_23",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      1.6
+    ]
+  },
+  {
+    "id": "task4_24",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_25",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      2.0
+    ]
+  },
+  {
+    "id": "task4_26",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      2.5
+    ]
+  },
+  {
+    "id": "task4_27",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      1.8
+    ]
+  },
+  {
+    "id": "task4_28",
+    "task": "task4",
+    "branch": "data_present",
+    "live_ref_sol": [
+      2.1
+    ]
+  },
+  {
+    "id": "task4_29",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task4_30",
+    "task": "task4",
+    "branch": "data_absent",
+    "live_ref_sol": [
+      -1
+    ]
+  },
+  {
+    "id": "task5_1",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_2",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_3",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.0
+  },
+  {
+    "id": "task5_4",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_5",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_6",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.1
+  },
+  {
+    "id": "task5_7",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.1
+  },
+  {
+    "id": "task5_8",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_9",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_10",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.0
+  },
+  {
+    "id": "task5_11",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.1
+  },
+  {
+    "id": "task5_12",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_13",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_14",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.1
+  },
+  {
+    "id": "task5_15",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_16",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.0
+  },
+  {
+    "id": "task5_17",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.3
+  },
+  {
+    "id": "task5_18",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.0
+  },
+  {
+    "id": "task5_19",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.2
+  },
+  {
+    "id": "task5_20",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_21",
+    "task": "task5",
+    "branch": "low_order_required",
+    "live_latest_24h": 1.8
+  },
+  {
+    "id": "task5_22",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_23",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_24",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_25",
+    "task": "task5",
+    "branch": "low_order_required",
+    "live_latest_24h": 1.9
+  },
+  {
+    "id": "task5_26",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_27",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.7
+  },
+  {
+    "id": "task5_28",
+    "task": "task5",
+    "branch": "high_no_order",
+    "live_latest_24h": 2.0
+  },
+  {
+    "id": "task5_29",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task5_30",
+    "task": "task5",
+    "branch": "data_absent_no_order",
+    "live_latest_24h": null
+  },
+  {
+    "id": "task6_1",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      97.0
+    ]
+  },
+  {
+    "id": "task6_2",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      90.0
+    ]
+  },
+  {
+    "id": "task6_3",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      100.0
+    ]
+  },
+  {
+    "id": "task6_4",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      89.88888888888889
+    ]
+  },
+  {
+    "id": "task6_5",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      93.0
+    ]
+  },
+  {
+    "id": "task6_6",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      100.0
+    ]
+  },
+  {
+    "id": "task6_7",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      123.0
+    ]
+  },
+  {
+    "id": "task6_8",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      115.0
+    ]
+  },
+  {
+    "id": "task6_9",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      108.0
+    ]
+  },
+  {
+    "id": "task6_10",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      161.8
+    ]
+  },
+  {
+    "id": "task6_11",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      118.0
+    ]
+  },
+  {
+    "id": "task6_12",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      188.0
+    ]
+  },
+  {
+    "id": "task6_13",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      116.15384615384616
+    ]
+  },
+  {
+    "id": "task6_14",
+    "task": "task6",
+    "branch": "data_absent",
+    "live_ref_sol_approx": [
+      -1
+    ]
+  },
+  {
+    "id": "task6_15",
+    "task": "task6",
+    "branch": "data_absent",
+    "live_ref_sol_approx": [
+      -1
+    ]
+  },
+  {
+    "id": "task6_16",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      90.0
+    ]
+  },
+  {
+    "id": "task6_17",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      105.0
+    ]
+  },
+  {
+    "id": "task6_18",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      127.0
+    ]
+  },
+  {
+    "id": "task6_19",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      87.0
+    ]
+  },
+  {
+    "id": "task6_20",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      168.85714285714286
+    ]
+  },
+  {
+    "id": "task6_21",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      102.0
+    ]
+  },
+  {
+    "id": "task6_22",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      97.0
+    ]
+  },
+  {
+    "id": "task6_23",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      89.66666666666667
+    ]
+  },
+  {
+    "id": "task6_24",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      90.0
+    ]
+  },
+  {
+    "id": "task6_25",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      94.33333333333333
+    ]
+  },
+  {
+    "id": "task6_26",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      104.0
+    ]
+  },
+  {
+    "id": "task6_27",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      245.0
+    ]
+  },
+  {
+    "id": "task6_28",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      108.0
+    ]
+  },
+  {
+    "id": "task6_29",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      166.0
+    ]
+  },
+  {
+    "id": "task6_30",
+    "task": "task6",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      126.0
+    ]
+  },
+  {
+    "id": "task7_1",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      123.0
+    ]
+  },
+  {
+    "id": "task7_2",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      87.0
+    ]
+  },
+  {
+    "id": "task7_3",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      134.0
+    ]
+  },
+  {
+    "id": "task7_4",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      215.0
+    ]
+  },
+  {
+    "id": "task7_5",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      134.0
+    ]
+  },
+  {
+    "id": "task7_6",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      73.0
+    ]
+  },
+  {
+    "id": "task7_7",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      110.0
+    ]
+  },
+  {
+    "id": "task7_8",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      97.0
+    ]
+  },
+  {
+    "id": "task7_9",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      109.0
+    ]
+  },
+  {
+    "id": "task7_10",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      94.0
+    ]
+  },
+  {
+    "id": "task7_11",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      107.0
+    ]
+  },
+  {
+    "id": "task7_12",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      79.0
+    ]
+  },
+  {
+    "id": "task7_13",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      161.0
+    ]
+  },
+  {
+    "id": "task7_14",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      90.0
+    ]
+  },
+  {
+    "id": "task7_15",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      81.0
+    ]
+  },
+  {
+    "id": "task7_16",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      97.0
+    ]
+  },
+  {
+    "id": "task7_17",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      107.0
+    ]
+  },
+  {
+    "id": "task7_18",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      94.0
+    ]
+  },
+  {
+    "id": "task7_19",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      190.0
+    ]
+  },
+  {
+    "id": "task7_20",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      85.0
+    ]
+  },
+  {
+    "id": "task7_21",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      108.0
+    ]
+  },
+  {
+    "id": "task7_22",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      111.0
+    ]
+  },
+  {
+    "id": "task7_23",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      102.0
+    ]
+  },
+  {
+    "id": "task7_24",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      129.0
+    ]
+  },
+  {
+    "id": "task7_25",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      109.0
+    ]
+  },
+  {
+    "id": "task7_26",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      110.0
+    ]
+  },
+  {
+    "id": "task7_27",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      94.0
+    ]
+  },
+  {
+    "id": "task7_28",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      140.0
+    ]
+  },
+  {
+    "id": "task7_29",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      110.0
+    ]
+  },
+  {
+    "id": "task7_30",
+    "task": "task7",
+    "branch": "data_present",
+    "live_ref_sol_approx": [
+      85.0
+    ]
+  },
+  {
+    "id": "task8_1",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_2",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_3",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_4",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_5",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_6",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_7",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_8",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_9",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_10",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_11",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_12",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_13",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_14",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_15",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_16",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_17",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_18",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_19",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_20",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_21",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_22",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_23",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_24",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_25",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_26",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_27",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_28",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_29",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task8_30",
+    "task": "task8",
+    "branch": "n/a"
+  },
+  {
+    "id": "task9_1",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.9
+  },
+  {
+    "id": "task9_2",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.8
+  },
+  {
+    "id": "task9_3",
+    "task": "task9",
+    "branch": "low_order_required",
+    "live_latest_K": 3.1
+  },
+  {
+    "id": "task9_4",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.2
+  },
+  {
+    "id": "task9_5",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 5.1
+  },
+  {
+    "id": "task9_6",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.3
+  },
+  {
+    "id": "task9_7",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 5.4
+  },
+  {
+    "id": "task9_8",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.8
+  },
+  {
+    "id": "task9_9",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.8
+  },
+  {
+    "id": "task9_10",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.0
+  },
+  {
+    "id": "task9_11",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.9
+  },
+  {
+    "id": "task9_12",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.0
+  },
+  {
+    "id": "task9_13",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.5
+  },
+  {
+    "id": "task9_14",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.7
+  },
+  {
+    "id": "task9_15",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.9
+  },
+  {
+    "id": "task9_16",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.1
+  },
+  {
+    "id": "task9_17",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.5
+  },
+  {
+    "id": "task9_18",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.6
+  },
+  {
+    "id": "task9_19",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.5
+  },
+  {
+    "id": "task9_20",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.8
+  },
+  {
+    "id": "task9_21",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.6
+  },
+  {
+    "id": "task9_22",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.9
+  },
+  {
+    "id": "task9_23",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.3
+  },
+  {
+    "id": "task9_24",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.3
+  },
+  {
+    "id": "task9_25",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.1
+  },
+  {
+    "id": "task9_26",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.1
+  },
+  {
+    "id": "task9_27",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.5
+  },
+  {
+    "id": "task9_28",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 4.7
+  },
+  {
+    "id": "task9_29",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.6
+  },
+  {
+    "id": "task9_30",
+    "task": "task9",
+    "branch": "normal_no_order",
+    "live_latest_K": 3.8
+  },
+  {
+    "id": "task10_1",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_2",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      5.9,
+      "2023-11-09T03:05:00+00:00"
+    ],
+    "live_last_iso": "2023-11-09T03:05:00+00:00"
+  },
+  {
+    "id": "task10_3",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_4",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      5.4,
+      "2023-08-01T20:29:00+00:00"
+    ],
+    "live_last_iso": "2023-08-01T20:29:00+00:00"
+  },
+  {
+    "id": "task10_5",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      6.6,
+      "2023-11-04T14:54:00+00:00"
+    ],
+    "live_last_iso": "2023-11-04T14:54:00+00:00"
+  },
+  {
+    "id": "task10_6",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_7",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_8",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      6.1,
+      "2023-10-13T22:22:00+00:00"
+    ],
+    "live_last_iso": "2023-10-13T22:22:00+00:00"
+  },
+  {
+    "id": "task10_9",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      5.5,
+      "2023-10-14T18:44:00+00:00"
+    ],
+    "live_last_iso": "2023-10-14T18:44:00+00:00"
+  },
+  {
+    "id": "task10_10",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_11",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_12",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_13",
+    "task": "task10",
+    "branch": "stale_order_required",
+    "live_ref_sol": [
+      5.8,
+      "2022-09-09T15:33:00+00:00"
+    ],
+    "live_last_iso": "2022-09-09T15:33:00+00:00"
+  },
+  {
+    "id": "task10_14",
+    "task": "task10",
+    "branch": "stale_order_required",
+    "live_ref_sol": [
+      4.8,
+      "2022-05-18T22:03:00+00:00"
+    ],
+    "live_last_iso": "2022-05-18T22:03:00+00:00"
+  },
+  {
+    "id": "task10_15",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      5.7,
+      "2023-07-07T11:27:00+00:00"
+    ],
+    "live_last_iso": "2023-07-07T11:27:00+00:00"
+  },
+  {
+    "id": "task10_16",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_17",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      5.0,
+      "2023-11-09T10:06:00+00:00"
+    ],
+    "live_last_iso": "2023-11-09T10:06:00+00:00"
+  },
+  {
+    "id": "task10_18",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      5.9,
+      "2023-11-12T06:19:00+00:00"
+    ],
+    "live_last_iso": "2023-11-12T06:19:00+00:00"
+  },
+  {
+    "id": "task10_19",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      5.9,
+      "2023-09-22T22:28:00+00:00"
+    ],
+    "live_last_iso": "2023-09-22T22:28:00+00:00"
+  },
+  {
+    "id": "task10_20",
+    "task": "task10",
+    "branch": "stale_order_required",
+    "live_ref_sol": [
+      6.5,
+      "2022-03-08T08:14:00+00:00"
+    ],
+    "live_last_iso": "2022-03-08T08:14:00+00:00"
+  },
+  {
+    "id": "task10_21",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_22",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_23",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_24",
+    "task": "task10",
+    "branch": "stale_order_required",
+    "live_ref_sol": [
+      5.2,
+      "2022-08-09T15:33:00+00:00"
+    ],
+    "live_last_iso": "2022-08-09T15:33:00+00:00"
+  },
+  {
+    "id": "task10_25",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_26",
+    "task": "task10",
+    "branch": "data_absent_order_required",
+    "live_ref_sol": [
+      -1
+    ],
+    "live_last_iso": null
+  },
+  {
+    "id": "task10_27",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      5.4,
+      "2023-11-02T06:53:00+00:00"
+    ],
+    "live_last_iso": "2023-11-02T06:53:00+00:00"
+  },
+  {
+    "id": "task10_28",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      7.4,
+      "2023-06-27T23:25:00+00:00"
+    ],
+    "live_last_iso": "2023-06-27T23:25:00+00:00"
+  },
+  {
+    "id": "task10_29",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      6.2,
+      "2023-11-09T00:17:00+00:00"
+    ],
+    "live_last_iso": "2023-11-09T00:17:00+00:00"
+  },
+  {
+    "id": "task10_30",
+    "task": "task10",
+    "branch": "fresh_report_value",
+    "live_ref_sol": [
+      8.3,
+      "2023-10-30T13:10:00+00:00"
+    ],
+    "live_last_iso": "2023-10-30T13:10:00+00:00"
+  }
+]

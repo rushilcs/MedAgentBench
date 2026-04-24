@@ -42,6 +42,7 @@ class Evaluator:
             status=state.status,
             step_rewards=self.env.step_rewards,
             model_id=getattr(policy, "model_id", ""),
+            infra_error=self.env.had_infra_error(),
         )
         traj.reward = compute_episode_reward(traj, correct, self.env.reward_config)
         return traj

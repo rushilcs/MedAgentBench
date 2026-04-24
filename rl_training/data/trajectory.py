@@ -27,6 +27,12 @@ class Trajectory:
     num_steps: int = 0
     model_id: str = ""
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    # True iff at least one GET during this episode returned a non-data
+    # error (FHIR HTTP 4xx/5xx, tunnel down, snapshot miss with no
+    # fall-through, etc.). Such tasks are graded as wrong by refsol but
+    # the failure is infrastructure, not the model. Eval can compute an
+    # 'excluding_infra_errors' SR using this flag.
+    infra_error: bool = False
 
     # ------------------------------------------------------------------
     # Conversion helpers
@@ -64,6 +70,7 @@ class Trajectory:
             "num_steps": self.num_steps,
             "model_id": self.model_id,
             "timestamp": self.timestamp,
+            "infra_error": self.infra_error,
         }
 
     def to_jsonl_line(self) -> str:
@@ -83,6 +90,7 @@ class Trajectory:
             num_steps=data.get("num_steps", 0),
             model_id=data.get("model_id", ""),
             timestamp=data.get("timestamp", ""),
+            infra_error=data.get("infra_error", False),
         )
 
     @classmethod
@@ -96,6 +104,7 @@ class Trajectory:
         reward: float = 0.0,
         step_rewards: list[float] | None = None,
         model_id: str = "",
+        infra_error: bool = False,
     ) -> "Trajectory":
         """Construct a Trajectory from a raw environment history."""
         turns = [Turn(role=h["role"], content=h["content"]) for h in history]
@@ -110,4 +119,5 @@ class Trajectory:
             status=status,
             num_steps=num_steps,
             model_id=model_id,
+            infra_error=infra_error,
         )
